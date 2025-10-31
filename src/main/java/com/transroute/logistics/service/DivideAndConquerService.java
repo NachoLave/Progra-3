@@ -1,6 +1,8 @@
 package com.transroute.logistics.service;
 
 import com.transroute.logistics.model.DistributionCenter;
+import com.transroute.logistics.repository.DistributionCenterRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,6 +23,27 @@ import java.util.List;
  */
 @Service
 public class DivideAndConquerService {
+    
+    @Autowired
+    private DistributionCenterRepository distributionCenterRepository;
+    
+    /**
+     * Obtiene todos los centros desde Neo4j y los ordena por demanda
+     * @return Lista ordenada por demanda desde Neo4j
+     */
+    public List<DistributionCenter> obtenerYOrdenarPorDemandaMergeSort() {
+        List<DistributionCenter> centers = distributionCenterRepository.findAll();
+        return ordenarPorDemandaMergeSort(centers);
+    }
+    
+    /**
+     * Obtiene todos los centros desde Neo4j y los ordena por prioridad
+     * @return Lista ordenada por prioridad desde Neo4j
+     */
+    public List<DistributionCenter> obtenerYOrdenarPorPrioridadQuickSort() {
+        List<DistributionCenter> centers = distributionCenterRepository.findAll();
+        return ordenarPorPrioridadQuickSort(centers);
+    }
 
     /**
      * Ordena centros de distribución por nivel de demanda usando MergeSort

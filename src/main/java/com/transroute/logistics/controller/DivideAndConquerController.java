@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,18 +33,15 @@ public class DivideAndConquerController {
      * Complejidad: O(n log n)
      */
     @PostMapping("/ordenar/mergesort")
-    @Operation(summary = "Ordena centros por demanda usando MergeSort", 
-                description = "Complejidad: O(n log n). Divide el problema en mitades, ordena cada mitad y las combina.")
+    @Operation(summary = "Ordena centros por demanda usando MergeSort desde Neo4j", 
+                description = "Complejidad: O(n log n). Obtiene centros de Neo4j y los ordena usando Divide y Vencerás.")
     public ResponseEntity<Map<String, Object>> ordenarPorDemandaMergeSort(
-            @Parameter(description = "Lista de IDs de centros a ordenar", required = true)
-            @RequestBody CenterSortRequest request) {
-        
-        // En una implementación real, estos centros vendrían de la base de datos
-        // Por ahora, creamos datos de ejemplo basados en los IDs
-        List<DistributionCenter> centers = crearCentrosEjemplo(request.getCenterIds());
+            @Parameter(description = "Request opcional con IDs específicos (si está vacío, usa todos)", required = false)
+            @RequestBody(required = false) CenterSortRequest request) {
         
         long startTime = System.nanoTime();
-        List<DistributionCenter> sorted = divideAndConquerService.ordenarPorDemandaMergeSort(centers);
+        // Obtener desde Neo4j y ordenar
+        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
         long endTime = System.nanoTime();
         
         Map<String, Object> response = new HashMap<>();
@@ -70,16 +66,15 @@ public class DivideAndConquerController {
      * Complejidad: O(n log n) promedio, O(n²) peor caso
      */
     @PostMapping("/ordenar/quicksort")
-    @Operation(summary = "Ordena centros por prioridad usando QuickSort",
-                description = "Complejidad: O(n log n) promedio. Particiona el array y ordena recursivamente.")
+    @Operation(summary = "Ordena centros por prioridad usando QuickSort desde Neo4j",
+                description = "Complejidad: O(n log n) promedio. Obtiene centros de Neo4j y los ordena.")
     public ResponseEntity<Map<String, Object>> ordenarPorPrioridadQuickSort(
-            @Parameter(description = "Lista de IDs de centros a ordenar", required = true)
-            @RequestBody CenterSortRequest request) {
-        
-        List<DistributionCenter> centers = crearCentrosEjemplo(request.getCenterIds());
+            @Parameter(description = "Request opcional", required = false)
+            @RequestBody(required = false) CenterSortRequest request) {
         
         long startTime = System.nanoTime();
-        List<DistributionCenter> sorted = divideAndConquerService.ordenarPorPrioridadQuickSort(centers);
+        // Obtener desde Neo4j y ordenar
+        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorPrioridadQuickSort();
         long endTime = System.nanoTime();
         
         Map<String, Object> response = new HashMap<>();
@@ -105,16 +100,14 @@ public class DivideAndConquerController {
      * REQUIERE: Lista previamente ordenada
      */
     @PostMapping("/buscar/binaria-demanda")
-    @Operation(summary = "Busca centro por nivel de demanda usando Búsqueda Binaria",
-                description = "Complejidad: O(log n). REQUIERE lista ordenada previamente.")
+    @Operation(summary = "Busca centro por nivel de demanda usando Búsqueda Binaria desde Neo4j",
+                description = "Complejidad: O(log n). Obtiene centros de Neo4j, los ordena y busca.")
     public ResponseEntity<Map<String, Object>> buscarPorDemandaBinaria(
-            @Parameter(description = "Request con IDs de centros y demanda objetivo", required = true)
+            @Parameter(description = "Request con demanda objetivo", required = true)
             @RequestBody BinarySearchRequest request) {
         
-        List<DistributionCenter> centers = crearCentrosEjemplo(request.getCenterIds());
-        
-        // Ordenar primero por demanda
-        List<DistributionCenter> sorted = divideAndConquerService.ordenarPorDemandaMergeSort(centers);
+        // Obtener desde Neo4j y ordenar primero por demanda
+        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
         
         long startTime = System.nanoTime();
         int index = divideAndConquerService.buscarPorDemandaBinaria(sorted, request.getTargetDemand());
@@ -145,15 +138,14 @@ public class DivideAndConquerController {
      * Complejidad: O(log n + k) donde k es el número de resultados
      */
     @PostMapping("/buscar/rango-demanda")
-    @Operation(summary = "Busca centros en un rango de demanda",
-                description = "Complejidad: O(log n + k). Encuentra todos los centros con demanda entre min y max.")
+    @Operation(summary = "Busca centros en un rango de demanda desde Neo4j",
+                description = "Complejidad: O(log n + k). Obtiene centros de Neo4j y busca en rango.")
     public ResponseEntity<Map<String, Object>> buscarPorRangoDemanda(
-            @RequestParam List<String> centerIds,
             @RequestParam int minDemand,
             @RequestParam int maxDemand) {
         
-        List<DistributionCenter> centers = crearCentrosEjemplo(centerIds);
-        List<DistributionCenter> sorted = divideAndConquerService.ordenarPorDemandaMergeSort(centers);
+        // Obtener desde Neo4j y ordenar
+        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
         
         long startTime = System.nanoTime();
         List<DistributionCenter> resultados = divideAndConquerService.buscarPorRangoDemanda(sorted, minDemand, maxDemand);
@@ -174,35 +166,5 @@ public class DivideAndConquerController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Método auxiliar para crear centros de ejemplo
-     * En una implementación real, esto vendría de un repositorio
-     */
-    private List<DistributionCenter> crearCentrosEjemplo(List<String> ids) {
-        List<DistributionCenter> centers = new ArrayList<>();
-        
-        // Generar datos de ejemplo con diferentes niveles de demanda y prioridad
-        String[] nombres = {"Centro Norte", "Centro Sur", "Centro Este", "Centro Oeste", "Centro Central"};
-        int[] demandas = {85, 45, 70, 30, 95};
-        int[] prioridades = {2, 4, 3, 5, 1};
-        
-        for (int i = 0; i < ids.size() && i < nombres.length; i++) {
-            String id = ids.get(i);
-            DistributionCenter center = new DistributionCenter(
-                    id,
-                    nombres[i % nombres.length],
-                    "Ciudad " + i,
-                    "Provincia " + i,
-                    demandas[i % demandas.length],
-                    10000,
-                    5000.0,
-                    prioridades[i % prioridades.length],
-                    "0.0,0.0"
-            );
-            centers.add(center);
-        }
-        
-        return centers;
-    }
 }
 
