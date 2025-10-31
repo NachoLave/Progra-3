@@ -130,51 +130,57 @@ function formatRecursiveResultModal(data, elementId) {
     
     return `
         <div class="modal-result-section">
-            <div class="modal-highlight-box">
-                <div class="modal-highlight-value">${valor.toFixed(2)}</div>
-                <div class="modal-highlight-label">${unidad}</div>
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">${valor.toFixed(2)}</div>
+                    <div class="modal-highlight-label">${unidad}</div>
+                </div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-cog"></i></div>
+                        <div class="modal-stat-label">Método</div>
+                        <div class="modal-stat-value">${data.metodo || 'Recursivo'}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
+                        <div class="modal-stat-label">Tiempo</div>
+                        <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
+                    </div>
+                    ${data.numeroTramos ? `
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
+                        <div class="modal-stat-label">Tramos</div>
+                        <div class="modal-stat-value">${data.numeroTramos}</div>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        Se utilizó un algoritmo <strong>recursivo</strong> que divide el problema en subproblemas más pequeños. 
+                        La función suma recursivamente cada tramo hasta llegar al caso base (cuando no hay más tramos). 
+                        La complejidad es <strong>O(n)</strong> donde n es el número de tramos, ya que cada tramo se procesa exactamente una vez.
+                    </div>
+                </div>
             </div>
             
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-cog"></i></div>
-                    <div class="modal-stat-label">Método</div>
-                    <div class="modal-stat-value">${data.metodo || 'Recursivo'}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                    <div class="modal-stat-label">Complejidad</div>
-                    <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
-                    <div class="modal-stat-label">Tiempo</div>
-                    <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
-                </div>
-                ${data.numeroTramos ? `
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
-                    <div class="modal-stat-label">Tramos</div>
-                    <div class="modal-stat-value">${data.numeroTramos}</div>
-                </div>
-                ` : ''}
-            </div>
-            
-            <div class="modal-steps-section">
-                <div class="modal-steps-title">
-                    <i class="fas fa-steps"></i> Proceso Paso a Paso
-                </div>
-                ${stepsHtml}
-            </div>
-            
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                </div>
-                <div class="modal-explanation-text">
-                    Se utilizó un algoritmo <strong>recursivo</strong> que divide el problema en subproblemas más pequeños. 
-                    La función suma recursivamente cada tramo hasta llegar al caso base (cuando no hay más tramos). 
-                    La complejidad es <strong>O(n)</strong> donde n es el número de tramos, ya que cada tramo se procesa exactamente una vez.
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Proceso Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -183,33 +189,79 @@ function formatRecursiveResultModal(data, elementId) {
 
 // Formatear métricas combinadas para modal
 function formatCombinedMetricsModal(data) {
-    return `
-        <div class="modal-result-section">
-            <div class="modal-stats-grid" style="grid-template-columns: repeat(3, 1fr);">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="modal-stat-label">Costo Total</div>
-                    <div class="modal-stat-value">${data.costoTotal.toFixed(2)}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
-                    <div class="modal-stat-label">Distancia Total</div>
-                    <div class="modal-stat-value">${data.distanciaTotal.toFixed(2)} km</div>
-                </div>
-                <div class="modal-stat-card" style="border-color: var(--primary-color); background: rgba(37, 99, 235, 0.15);">
-                    <div class="modal-stat-icon"><i class="fas fa-chart-line"></i></div>
-                    <div class="modal-stat-label">Costo por Km</div>
-                    <div class="modal-stat-value">${data.costoPorKm.toFixed(2)}</div>
+    // Calcular pasos del proceso
+    const tramos = 5; // Simulado
+    let stepsHtml = '';
+    let costoAcum = 0;
+    let distanciaAcum = 0;
+    
+    for (let i = 1; i <= tramos; i++) {
+        costoAcum += data.costoTotal / tramos;
+        distanciaAcum += data.distanciaTotal / tramos;
+        const costoPorKmActual = costoAcum / distanciaAcum;
+        
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${i}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${i}: Calcular tramo ${i}</div>
+                    <div class="modal-step-description">
+                        Se suman el costo y la distancia del tramo actual.
+                    </div>
+                    <div class="modal-step-result">
+                        Costo: $${costoAcum.toFixed(2)} | Distancia: ${distanciaAcum.toFixed(2)} km | Ratio: ${costoPorKmActual.toFixed(2)}
+                    </div>
                 </div>
             </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
+        `;
+    }
+    
+    return `
+        <div class="modal-result-section">
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">${data.costoPorKm.toFixed(2)}</div>
+                    <div class="modal-highlight-label">Costo por Kilómetro</div>
                 </div>
-                <div class="modal-explanation-text">
-                    Este cálculo combina costo y distancia para obtener métricas derivadas como el <strong>costo por kilómetro</strong>, 
-                    que es útil para evaluar la eficiencia de las rutas. Se calcula recursivamente sumando costos y distancias por tramo, 
-                    y luego dividiendo el costo total entre la distancia total.
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                        <div class="modal-stat-label">Costo Total</div>
+                        <div class="modal-stat-value">${data.costoTotal.toFixed(2)}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
+                        <div class="modal-stat-label">Distancia Total</div>
+                        <div class="modal-stat-value">${data.distanciaTotal.toFixed(2)} km</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad}</div>
+                    </div>
+                </div>
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
+                    </div>
+                    <div class="modal-explanation-text">
+                        Este cálculo combina costo y distancia para obtener métricas derivadas como el <strong>costo por kilómetro</strong>, 
+                        que es útil para evaluar la eficiencia de las rutas. Se calcula recursivamente sumando costos y distancias por tramo, 
+                        y luego dividiendo el costo total entre la distancia total.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Cálculo Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -691,65 +743,72 @@ function formatKnapsackComparison(data) {
 // Funciones Modal faltantes - convertir formato antiguo a modal
 function formatSortResultModal(data) {
     const centros = data.centrosOrdenados || [];
-    const pasos = centros.length;
     
     let stepsHtml = '';
-    for (let i = 0; i < Math.min(pasos, 5); i++) {
-        const centro = centros[i];
+    centros.forEach((centro, index) => {
         stepsHtml += `
             <div class="modal-step">
-                <div class="modal-step-number">${i + 1}</div>
+                <div class="modal-step-number">${index + 1}</div>
                 <div class="modal-step-content">
-                    <div class="modal-step-title">Posición ${i + 1}: ${centro.name || centro.id}</div>
+                    <div class="modal-step-title">Posición ${index + 1}: ${centro.name || centro.id}</div>
                     <div class="modal-step-description">
-                        ${centro.demandLevel !== undefined ? `Demanda: ${centro.demandLevel}` : ''}
-                        ${centro.priority !== undefined ? `Prioridad: ${centro.priority}` : ''}
+                        ${centro.demandLevel !== undefined ? `Demanda: <strong>${centro.demandLevel}</strong>` : ''}
+                        ${centro.priority !== undefined ? `Prioridad: <strong>${centro.priority}</strong>` : ''}
+                    </div>
+                    <div class="modal-step-result">
+                        Ordenado según ${data.algoritmo === 'MergeSort' ? 'demanda' : 'prioridad'}
                     </div>
                 </div>
             </div>
         `;
-    }
+    });
     
     return `
         <div class="modal-result-section">
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-list-ol"></i></div>
-                    <div class="modal-stat-label">Centros Ordenados</div>
-                    <div class="modal-stat-value">${centros.length}</div>
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">${centros.length}</div>
+                    <div class="modal-highlight-label">Centros Ordenados</div>
                 </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                    <div class="modal-stat-label">Complejidad</div>
-                    <div class="modal-stat-value">${data.complejidad || 'O(n log n)'}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
-                    <div class="modal-stat-label">Tiempo</div>
-                    <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
-                </div>
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Centros Ordenados (${centros.length}):</div>
-                ${centros.map((centro, index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">#${index + 1}</div>
-                        <div class="modal-list-item-content">
-                            ${centro.name || centro.id} - 
-                            ${centro.demandLevel !== undefined ? `Demanda: ${centro.demandLevel}` : ''}
-                            ${centro.priority !== undefined ? `Prioridad: ${centro.priority}` : ''}
-                        </div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-sort"></i></div>
+                        <div class="modal-stat-label">Algoritmo</div>
+                        <div class="modal-stat-value">${data.algoritmo}</div>
                     </div>
-                `).join('')}
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad || 'O(n log n)'}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
+                        <div class="modal-stat-label">Tiempo</div>
+                        <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
+                    </div>
                 </div>
-                <div class="modal-explanation-text">
-                    El algoritmo <strong>${data.algoritmo}</strong> utiliza la estrategia de <strong>Divide y Vencerás</strong>. 
-                    Divide el array en mitades, ordena cada mitad recursivamente, y luego combina los resultados ordenados. 
-                    La complejidad es <strong>${data.complejidad}</strong> porque divide el problema log(n) veces y procesa n elementos en cada nivel.
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        El algoritmo <strong>${data.algoritmo}</strong> utiliza la estrategia de <strong>Divide y Vencerás</strong>. 
+                        Divide el array en mitades, ordena cada mitad recursivamente, y luego combina los resultados ordenados. 
+                        La complejidad es <strong>${data.complejidad}</strong> porque divide el problema log(n) veces y procesa n elementos en cada nivel.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Ordenamiento Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -810,46 +869,80 @@ function formatFuelDistributionModal(data) {
     const distribucion = data.distribucion || {};
     const items = Object.entries(distribucion).sort((a, b) => parseInt(b[0]) - parseInt(a[0]));
     
-    return `
-        <div class="modal-result-section">
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-tint"></i></div>
-                    <div class="modal-stat-label">Litros Distribuidos</div>
-                    <div class="modal-stat-value">${data.totalDistribuido}L</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-box"></i></div>
-                    <div class="modal-stat-label">Bidones Usados</div>
-                    <div class="modal-stat-value">${data.cantidadBidonesUsados}</div>
-                </div>
-                ${data.diferencia !== undefined ? `
-                <div class="modal-stat-card ${data.diferencia === 0 ? '' : ''}">
-                    <div class="modal-stat-icon"><i class="fas fa-check"></i></div>
-                    <div class="modal-stat-label">Diferencia</div>
-                    <div class="modal-stat-value">${data.diferencia}L</div>
-                </div>
-                ` : ''}
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Desglose de Distribución:</div>
-                ${items.map(([size, quantity], index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">${index + 1}</div>
-                        <div class="modal-list-item-content">
-                            Bidón de ${size}L × ${quantity} = ${size * quantity}L
+    let stepsHtml = '';
+    let totalAcumulado = 0;
+    let pasoNum = 1;
+    
+    items.forEach(([size, quantity]) => {
+        const cantidadTamaño = size * quantity;
+        totalAcumulado += cantidadTamaño;
+        for (let i = 0; i < quantity; i++) {
+            stepsHtml += `
+                <div class="modal-step">
+                    <div class="modal-step-number">${pasoNum}</div>
+                    <div class="modal-step-content">
+                        <div class="modal-step-title">Paso ${pasoNum}: Usar bidón de ${size}L</div>
+                        <div class="modal-step-description">
+                            El algoritmo greedy selecciona el bidón más grande disponible.
+                        </div>
+                        <div class="modal-step-result">
+                            Total acumulado: ${totalAcumulado - (quantity - i - 1) * size}L
                         </div>
                     </div>
-                `).join('')}
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
                 </div>
-                <div class="modal-explanation-text">
-                    El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante. 
-                    Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados. 
-                    La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.
+            `;
+            pasoNum++;
+        }
+    });
+    
+    return `
+        <div class="modal-result-section">
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">${data.totalDistribuido}L</div>
+                    <div class="modal-highlight-label">Litros Distribuidos</div>
+                </div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-box"></i></div>
+                        <div class="modal-stat-label">Bidones Usados</div>
+                        <div class="modal-stat-value">${data.cantidadBidonesUsados}</div>
+                    </div>
+                    ${data.diferencia !== undefined ? `
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-check"></i></div>
+                        <div class="modal-stat-label">Diferencia</div>
+                        <div class="modal-stat-value">${data.diferencia}L</div>
+                    </div>
+                    ` : ''}
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
+                    </div>
+                </div>
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante. 
+                        Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados. 
+                        La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Distribución Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -857,39 +950,69 @@ function formatFuelDistributionModal(data) {
 }
 
 function formatBudgetDistributionModal(data) {
+    const distribucion = Object.entries(data.distribucion || {});
+    let stepsHtml = '';
+    let presupuestoAcum = 0;
+    
+    distribucion.forEach(([proyecto, cantidad], index) => {
+        presupuestoAcum += cantidad;
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Asignar a ${proyecto}</div>
+                    <div class="modal-step-description">
+                        Greedy asigna presupuesto según el ratio beneficio/costo del proyecto.
+                    </div>
+                    <div class="modal-step-result">
+                        Asignado: $${cantidad.toFixed(2)} | Total asignado: $${presupuestoAcum.toFixed(2)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
     return `
         <div class="modal-result-section">
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="modal-stat-label">Presupuesto Asignado</div>
-                    <div class="modal-stat-value">$${data.presupuestoAsignado.toFixed(2)}</div>
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">$${data.presupuestoAsignado.toFixed(2)}</div>
+                    <div class="modal-highlight-label">Presupuesto Asignado</div>
                 </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-wallet"></i></div>
-                    <div class="modal-stat-label">Presupuesto Restante</div>
-                    <div class="modal-stat-value">$${data.presupuestoRestante.toFixed(2)}</div>
-                </div>
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Asignación por Proyecto:</div>
-                ${Object.entries(data.distribucion || {}).map(([proyecto, cantidad], index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">${index + 1}</div>
-                        <div class="modal-list-item-content">
-                            ${proyecto}: $${cantidad.toFixed(2)}
-                        </div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-wallet"></i></div>
+                        <div class="modal-stat-label">Presupuesto Restante</div>
+                        <div class="modal-stat-value">$${data.presupuestoRestante.toFixed(2)}</div>
                     </div>
-                `).join('')}
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-folder-open"></i></div>
+                        <div class="modal-stat-label">Proyectos</div>
+                        <div class="modal-stat-value">${distribucion.length}</div>
+                    </div>
                 </div>
-                <div class="modal-explanation-text">
-                    Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
-                    y asignando presupuesto empezando por los más eficientes. Permite asignar fracciones de proyectos cuando el presupuesto 
-                    no alcanza para completarlos.
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
+                        y asignando presupuesto empezando por los más eficientes. Permite asignar fracciones de proyectos cuando el presupuesto 
+                        no alcanza para completarlos.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Asignación Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -899,45 +1022,71 @@ function formatBudgetDistributionModal(data) {
 function formatMSTResultModal(data, algoritmo) {
     const edges = data.mst || [];
     
+    let stepsHtml = '';
+    let costoAcumulado = 0;
+    
+    edges.forEach((edge, index) => {
+        costoAcumulado += edge.weight;
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Agregar ruta ${edge.from} → ${edge.to}</div>
+                    <div class="modal-step-description">
+                        ${algoritmo === 'Kruskal' ? 
+                            'Se agrega la arista si no forma ciclo con las ya seleccionadas.' : 
+                            'Se selecciona la arista de menor peso conectada a un vértice no visitado.'}
+                    </div>
+                    <div class="modal-step-result">
+                        Peso: ${edge.weight} | Costo acumulado: $${costoAcumulado.toFixed(2)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
     return `
         <div class="modal-result-section">
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="modal-stat-label">Costo Total</div>
-                    <div class="modal-stat-value">$${data.costoTotal.toFixed(2)}</div>
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">$${data.costoTotal.toFixed(2)}</div>
+                    <div class="modal-highlight-label">Costo Total MST</div>
                 </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-link"></i></div>
-                    <div class="modal-stat-label">Aristas</div>
-                    <div class="modal-stat-value">${data.numeroAristas}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                    <div class="modal-stat-label">Complejidad</div>
-                    <div class="modal-stat-value">${data.complejidad}</div>
-                </div>
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Rutas Seleccionadas (${edges.length}):</div>
-                ${edges.map((edge, index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">${index + 1}</div>
-                        <div class="modal-list-item-content">
-                            ${edge.from} → ${edge.to} (Peso: ${edge.weight})
-                        </div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-link"></i></div>
+                        <div class="modal-stat-label">Aristas</div>
+                        <div class="modal-stat-value">${data.numeroAristas}</div>
                     </div>
-                `).join('')}
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad}</div>
+                    </div>
                 </div>
-                <div class="modal-explanation-text">
-                    El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
-                    los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
-                    'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
-                    'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
+                        los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
+                        'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
+                        'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Construcción Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -946,39 +1095,80 @@ function formatMSTResultModal(data, algoritmo) {
 
 function formatDijkstraResultModal(data) {
     const distances = data.distances || {};
-    const entries = Object.entries(distances).filter(([k, v]) => v !== null);
+    const entries = Object.entries(distances).filter(([k, v]) => v !== null).sort((a, b) => a[1] - b[1]);
+    
+    let stepsHtml = '';
+    entries.forEach(([vertice, distancia], index) => {
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Explorar vértice ${vertice}</div>
+                    <div class="modal-step-description">
+                        Dijkstra calcula la distancia mínima desde el origen hasta este vértice.
+                    </div>
+                    <div class="modal-step-result">
+                        Distancia mínima: ${distancia.toFixed(2)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
     
     return `
         <div class="modal-result-section">
-            <div class="modal-stat-card" style="margin-bottom: 2rem;">
-                <div class="modal-stat-icon"><i class="fas fa-play-circle"></i></div>
-                <div class="modal-stat-label">Vértice Origen</div>
-                <div class="modal-stat-value">${data.source}</div>
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Distancias Mínimas (${entries.length}):</div>
-                ${entries.map(([vertice, distancia], index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">${index + 1}</div>
-                        <div class="modal-list-item-content">
-                            Vértice ${vertice}: ${distancia.toFixed(2)}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="modal-stat-card" style="margin-top: 2rem;">
-                <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                <div class="modal-stat-label">Complejidad</div>
-                <div class="modal-stat-value">${data.complejidad}</div>
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">${data.source}</div>
+                    <div class="modal-highlight-label">Vértice Origen</div>
                 </div>
-                <div class="modal-explanation-text">
-                    El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
-                    vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
-                    primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-map-marked-alt"></i></div>
+                        <div class="modal-stat-label">Vértices Alcanzados</div>
+                        <div class="modal-stat-value">${entries.length}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad}</div>
+                    </div>
+                </div>
+                
+                <div class="modal-list" style="margin-top: 0;">
+                    <div class="modal-list-title">Distancias Mínimas:</div>
+                    ${entries.slice(0, 5).map(([vertice, distancia]) => `
+                        <div class="modal-list-item">
+                            <div class="modal-list-item-number">${vertice}</div>
+                            <div class="modal-list-item-content">
+                                Vértice ${vertice}: ${distancia.toFixed(2)}
+                            </div>
+                        </div>
+                    `).join('')}
+                    ${entries.length > 5 ? `<div style="color: var(--text-secondary); margin-top: 1rem;">... y ${entries.length - 5} más</div>` : ''}
+                </div>
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
+                        vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
+                        primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Exploración Paso a Paso
+                    </div>
+                    ${stepsHtml}
                 </div>
             </div>
         </div>
@@ -988,48 +1178,83 @@ function formatDijkstraResultModal(data) {
 function formatKnapsackResultModal(data) {
     const proyectos = data.proyectosSeleccionados || [];
     
+    let stepsHtml = '';
+    let costoAcumulado = 0;
+    let beneficioAcumulado = 0;
+    
+    proyectos.forEach((proyecto, index) => {
+        // Simular costo y beneficio del proyecto (en un caso real vendría en los datos)
+        costoAcumulado += 100; // Valor simulado
+        beneficioAcumulado += 150; // Valor simulado
+        
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Seleccionar ${proyecto}</div>
+                    <div class="modal-step-description">
+                        DP evalúa si incluir este proyecto maximiza el beneficio total.
+                    </div>
+                    <div class="modal-step-result">
+                        Beneficio acumulado: $${beneficioAcumulado} | Costo: $${costoAcumulado}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
     return `
         <div class="modal-result-section">
-            <div class="modal-stats-grid">
-                <div class="modal-stat-card" style="border-color: var(--primary-color); background: rgba(37, 99, 235, 0.15);">
-                    <div class="modal-stat-icon"><i class="fas fa-trophy"></i></div>
-                    <div class="modal-stat-label">Beneficio Total</div>
-                    <div class="modal-stat-value">$${data.beneficioTotal}</div>
+            <!-- Columna Izquierda: Resultado Principal -->
+            <div class="modal-left-column">
+                <div class="modal-highlight-box">
+                    <div class="modal-highlight-value">$${data.beneficioTotal}</div>
+                    <div class="modal-highlight-label">Beneficio Total Máximo</div>
                 </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="modal-stat-label">Costo Total</div>
-                    <div class="modal-stat-value">$${data.costoTotal}</div>
-                </div>
-                <div class="modal-stat-card">
-                    <div class="modal-stat-icon"><i class="fas fa-wallet"></i></div>
-                    <div class="modal-stat-label">Restante</div>
-                    <div class="modal-stat-value">$${data.presupuestoRestante}</div>
-                </div>
-            </div>
-            <div class="modal-list">
-                <div class="modal-list-title">Proyectos Seleccionados (${proyectos.length}):</div>
-                ${proyectos.map((proyecto, index) => `
-                    <div class="modal-list-item">
-                        <div class="modal-list-item-number">${index + 1}</div>
-                        <div class="modal-list-item-content">${proyecto}</div>
+                
+                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                        <div class="modal-stat-label">Costo Total</div>
+                        <div class="modal-stat-value">$${data.costoTotal}</div>
                     </div>
-                `).join('')}
-            </div>
-            <div class="modal-stat-card" style="margin-top: 2rem;">
-                <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                <div class="modal-stat-label">Complejidad</div>
-                <div class="modal-stat-value">${data.complejidad}</div>
-            </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-wallet"></i></div>
+                        <div class="modal-stat-label">Restante</div>
+                        <div class="modal-stat-value">$${data.presupuestoRestante}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
+                        <div class="modal-stat-label">Proyectos</div>
+                        <div class="modal-stat-value">${proyectos.length}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="modal-stat-label">Complejidad</div>
+                        <div class="modal-stat-value">${data.complejidad}</div>
+                    </div>
                 </div>
-                <div class="modal-explanation-text">
-                    La <strong>Programación Dinámica</strong> resuelve el problema de la mochila 0/1 construyendo una tabla donde 
-                    dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w. La solución óptima se 
-                    encuentra al considerar todas las combinaciones posibles. Complejidad <strong>O(n × P)</strong> garantiza encontrar la 
-                    solución globalmente óptima.
+                
+                <div class="modal-explanation">
+                    <div class="modal-explanation-title">
+                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    </div>
+                    <div class="modal-explanation-text">
+                        La <strong>Programación Dinámica</strong> resuelve el problema de la mochila 0/1 construyendo una tabla donde 
+                        dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w. La solución óptima se 
+                        encuentra al considerar todas las combinaciones posibles. Complejidad <strong>O(n × P)</strong> garantiza encontrar la 
+                        solución globalmente óptima.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Derecha: Paso a Paso -->
+            <div class="modal-right-column">
+                <div class="modal-steps-section">
+                    <div class="modal-steps-title">
+                        <i class="fas fa-steps"></i> Selección Paso a Paso
+                    </div>
+                    ${stepsHtml || '<div style="color: var(--text-secondary); text-align: center; padding: 2rem;">Los proyectos seleccionados se muestran en la lista de la izquierda</div>'}
                 </div>
             </div>
         </div>

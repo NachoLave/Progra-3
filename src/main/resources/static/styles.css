@@ -1794,6 +1794,16 @@ body {
 /* Modal Result Sections */
 .modal-result-section {
     margin-bottom: 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .modal-result-section {
+        grid-template-columns: 1fr;
+    }
 }
 
 .modal-highlight-box {
@@ -1862,7 +1872,41 @@ body {
 }
 
 .modal-steps-section {
-    margin-top: 3rem;
+    margin-top: 0;
+}
+
+.modal-left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.modal-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-right: 1rem;
+}
+
+/* Scrollbar para columna derecha */
+.modal-right-column::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-right-column::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+    border-radius: 4px;
+}
+
+.modal-right-column::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.modal-right-column::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
 
 .modal-steps-title {
