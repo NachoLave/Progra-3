@@ -641,6 +641,66 @@ async function calcularCostoTotal() {
     }
 }
 
+function verVisualizacionRecursion(type) {
+    const inputId = type === 'cost' ? 'costs-input' : 'distances-input';
+    const vizId = type === 'cost' ? 'cost-viz' : 'distance-viz';
+    const input = document.getElementById(inputId).value;
+    const values = input.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+    
+    if (values.length === 0) {
+        alert('Por favor ingresa valores primero');
+        return;
+    }
+    
+    visualizer.visualizeRecursion(values, vizId);
+}
+
+function verVisualizacionGreedy() {
+    const amount = parseInt(document.getElementById('fuel-amount').value);
+    const sizesInput = document.getElementById('fuel-sizes').value;
+    const sizes = sizesInput.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+    
+    if (!amount || sizes.length === 0) {
+        alert('Por favor completa los campos primero');
+        return;
+    }
+    
+    visualizer.visualizeGreedy(amount, sizes, 'fuel-viz');
+}
+
+function verVisualizacionGrafo(type) {
+    const graphJson = document.getElementById(`${type}-graph`).value;
+    try {
+        const graph = JSON.parse(graphJson);
+        visualizer.visualizeGraph(graph.edges, `${type}-viz`);
+    } catch (error) {
+        alert('Error al parsear el grafo: ' + error.message);
+    }
+}
+
+async function verTablaDP() {
+    const presupuesto = parseInt(document.getElementById('knapsack-budget').value);
+    const proyectos = JSON.parse(document.getElementById('knapsack-projects').value);
+    
+    const request = {
+        proyectos,
+        presupuesto
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/dynamic-programming/mochila/tabla-dp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        });
+        
+        const data = await response.json();
+        visualizer.visualizeDP(data.tablaDP, 'knapsack-viz');
+    } catch (error) {
+        alert('Error al obtener tabla DP: ' + error.message);
+    }
+}
+
 async function calcularDistanciaTotal() {
     showLoading();
     try {

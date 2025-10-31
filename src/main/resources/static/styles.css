@@ -281,6 +281,24 @@ body {
     box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
 }
 
+.btn-secondary {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.button-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 .btn:active {
     transform: translateY(0);
 }
@@ -935,6 +953,369 @@ body {
 
 .result-box .info {
     color: var(--primary-color);
+}
+
+/* ==================== VISUALIZACIONES PASO A PASO ==================== */
+
+.visualization-container {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.viz-header h4 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.viz-header h4 i {
+    color: var(--primary-color);
+}
+
+.viz-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-viz {
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-viz:hover {
+    background: var(--primary-dark);
+}
+
+.speed-slider {
+    width: 150px;
+}
+
+.speed-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.viz-explanation {
+    background: rgba(37, 99, 235, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.viz-explanation p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Recursión Visualization */
+.recursion-visualization {
+    min-height: 300px;
+}
+
+.step-indicator {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.step-content {
+    background: var(--dark-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.step-message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.step-message.call {
+    background: rgba(37, 99, 235, 0.2);
+    border-left: 4px solid var(--primary-color);
+    color: var(--text-primary);
+}
+
+.step-message.return {
+    background: rgba(34, 197, 94, 0.2);
+    border-left: 4px solid var(--success-color);
+    color: var(--text-primary);
+}
+
+.step-message.base {
+    background: rgba(245, 158, 11, 0.2);
+    border-left: 4px solid var(--warning-color);
+    color: var(--text-primary);
+}
+
+.step-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.detail-box {
+    background: var(--card-bg);
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.detail-box .detail-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.detail-box .detail-value {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.detail-box .detail-value.highlight {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+
+.call-stack {
+    background: var(--card-bg);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    grid-column: 1 / -1;
+}
+
+.stack-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stack-items {
+    color: var(--primary-color);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+/* Greedy Visualization */
+.greedy-visualization {
+    min-height: 200px;
+}
+
+.greedy-initial {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.greedy-target {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.greedy-sizes {
+    color: var(--text-secondary);
+}
+
+.greedy-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.greedy-step {
+    background: var(--card-bg);
+    padding: 1.25rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.step-number {
+    background: var(--primary-color);
+    color: white;
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.step-action {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-action i {
+    color: var(--success-color);
+}
+
+.step-calculation {
+    color: var(--text-secondary);
+    font-family: 'Courier New', monospace;
+    background: var(--dark-bg);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin: 0.5rem 0;
+}
+
+.step-result {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.greedy-final {
+    background: rgba(34, 197, 94, 0.1);
+    border: 2px solid var(--success-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+}
+
+.final-summary {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Graph Visualization */
+.graph-visualization {
+    background: var(--dark-bg);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.graph-svg {
+    background: var(--card-bg);
+    border-radius: 8px;
+    max-width: 100%;
+}
+
+/* DP Table Visualization */
+.dp-visualization {
+    overflow-x: auto;
+}
+
+.dp-table-container {
+    background: var(--dark-bg);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.dp-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card-bg);
+    font-size: 0.9rem;
+}
+
+.dp-table th {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.75rem;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+}
+
+.dp-table td {
+    padding: 0.75rem;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.dp-table tr:nth-child(even) {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.dp-cell {
+    font-weight: 600;
+}
+
+.dp-cell.highlight {
+    background: rgba(34, 197, 94, 0.3);
+}
+
+/* Array Visualization (for sorting) */
+.array-visual {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 8px;
+    min-height: 200px;
+}
+
+.array-item {
+    flex: 1;
+    background: linear-gradient(to top, var(--primary-color), var(--primary-dark));
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0.5rem;
+    min-height: 40px;
+    transition: all 0.3s ease;
+}
+
+.array-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4);
+}
+
+.item-value {
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.item-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
 }
 
 /* Footer */

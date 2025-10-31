@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -63,10 +64,16 @@
                             <label>Costos por tramo (separados por comas):</label>
                             <input type="text" id="costs-input" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
                         </div>
-                        <button class="btn btn-primary" onclick="calcularCostoTotal()">
-                            <i class="fas fa-calculator"></i> Calcular
-                        </button>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="calcularCostoTotal()">
+                                <i class="fas fa-calculator"></i> Calcular
+                            </button>
+                            <button class="btn btn-secondary" onclick="verVisualizacionRecursion('cost')">
+                                <i class="fas fa-eye"></i> Ver Paso a Paso
+                            </button>
+                        </div>
                         <div id="cost-result" class="result-box"></div>
+                        <div id="cost-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -179,10 +186,16 @@
                             <label>Tamaños de bidones (separados por comas):</label>
                             <input type="text" id="fuel-sizes" placeholder="50, 20, 10, 5, 2" value="50, 20, 10, 5, 2">
                         </div>
-                        <button class="btn btn-primary" onclick="distribuirCombustible()">
-                            <i class="fas fa-gas-pump"></i> Distribuir
-                        </button>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="distribuirCombustible()">
+                                <i class="fas fa-gas-pump"></i> Distribuir
+                            </button>
+                            <button class="btn btn-secondary" onclick="verVisualizacionGreedy()">
+                                <i class="fas fa-eye"></i> Ver Proceso
+                            </button>
+                        </div>
                         <div id="fuel-result" class="result-box"></div>
+                        <div id="fuel-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -217,10 +230,16 @@
                             <label>Grafo (JSON):</label>
                             <textarea id="kruskal-graph" rows="6" placeholder='{"vertices": 4, "edges": [{"from": 0, "to": 1, "weight": 10}, {"from": 1, "to": 2, "weight": 15}, {"from": 2, "to": 3, "weight": 4}, {"from": 0, "to": 3, "weight": 5}]}'>{"vertices": 4, "edges": [{"from": 0, "to": 1, "weight": 10}, {"from": 1, "to": 2, "weight": 15}, {"from": 2, "to": 3, "weight": 4}, {"from": 0, "to": 3, "weight": 5}]}</textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="calcularKruskal()">
-                            <i class="fas fa-sitemap"></i> Calcular MST
-                        </button>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="calcularKruskal()">
+                                <i class="fas fa-sitemap"></i> Calcular MST
+                            </button>
+                            <button class="btn btn-secondary" onclick="verVisualizacionGrafo('kruskal')">
+                                <i class="fas fa-eye"></i> Ver Grafo
+                            </button>
+                        </div>
                         <div id="kruskal-result" class="result-box"></div>
+                        <div id="kruskal-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -263,10 +282,16 @@
                             <label>Proyectos (JSON):</label>
                             <textarea id="knapsack-projects" rows="6" placeholder='[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]'>[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]</textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="resolverMochila()">
-                            <i class="fas fa-calculator"></i> Resolver
-                        </button>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="resolverMochila()">
+                                <i class="fas fa-calculator"></i> Resolver
+                            </button>
+                            <button class="btn btn-secondary" onclick="verTablaDP()">
+                                <i class="fas fa-table"></i> Ver Tabla DP
+                            </button>
+                        </div>
                         <div id="knapsack-result" class="result-box"></div>
+                        <div id="knapsack-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -301,6 +326,7 @@
         <p>Procesando...</p>
     </div>
 
+    <script src="visualizer.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
