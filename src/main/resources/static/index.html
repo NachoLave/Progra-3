@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransRoute S.A. - Sistema de Logística Inteligente</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-truck"></i>
+                    <h1>TransRoute S.A.</h1>
+                </div>
+                <div class="header-subtitle">
+                    Sistema de Planificación de Rutas y Recursos
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-module="recursive">
+                <i class="fas fa-infinity"></i>
+                <span>Módulo 1: Recursividad</span>
+            </button>
+            <button class="nav-tab" data-module="divide">
+                <i class="fas fa-code-branch"></i>
+                <span>Módulo 2: Divide y Vencerás</span>
+            </button>
+            <button class="nav-tab" data-module="greedy">
+                <i class="fas fa-coins"></i>
+                <span>Módulo 3: Greedy</span>
+            </button>
+            <button class="nav-tab" data-module="graphs">
+                <i class="fas fa-project-diagram"></i>
+                <span>Módulo 4: Grafos</span>
+            </button>
+            <button class="nav-tab" data-module="dynamic">
+                <i class="fas fa-chart-line"></i>
+                <span>Módulo 5: Programación Dinámica</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Módulo 1: Recursividad -->
+            <div class="module-content active" id="module-recursive">
+                <div class="module-header">
+                    <h2><i class="fas fa-infinity"></i> Módulo 1: Complejidad y Recursividad</h2>
+                    <p>Calcular métricas operativas usando recursión. Complejidad: O(n)</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-dollar-sign"></i> Calcular Costo Total</h3>
+                        <div class="form-group">
+                            <label>Costos por tramo (separados por comas):</label>
+                            <input type="text" id="costs-input" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularCostoTotal()">
+                            <i class="fas fa-calculator"></i> Calcular
+                        </button>
+                        <div id="cost-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-route"></i> Calcular Distancia Total</h3>
+                        <div class="form-group">
+                            <label>Distancias por tramo (separadas por comas):</label>
+                            <input type="text" id="distances-input" placeholder="50.0, 75.5, 30.0, 100.0" value="50.0, 75.5, 30.0, 100.0">
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularDistanciaTotal()">
+                            <i class="fas fa-calculator"></i> Calcular
+                        </button>
+                        <div id="distance-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-chart-bar"></i> Métricas Combinadas</h3>
+                        <div class="form-group">
+                            <label>Costos:</label>
+                            <input type="text" id="combined-costs" placeholder="150.5, 200.0, 75.25" value="150.5, 200.0, 75.25">
+                        </div>
+                        <div class="form-group">
+                            <label>Distancias:</label>
+                            <input type="text" id="combined-distances" placeholder="50.0, 75.5, 30.0" value="50.0, 75.5, 30.0">
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularMetricasCombinadas()">
+                            <i class="fas fa-calculator"></i> Calcular
+                        </button>
+                        <div id="combined-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-tachometer-alt"></i> Comparar Rendimiento</h3>
+                        <div class="form-group">
+                            <label>Costos para comparar:</label>
+                            <input type="text" id="compare-costs" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
+                        </div>
+                        <button class="btn btn-success" onclick="compararRendimiento()">
+                            <i class="fas fa-balance-scale"></i> Comparar
+                        </button>
+                        <div id="compare-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 2: Divide y Vencerás -->
+            <div class="module-content" id="module-divide">
+                <div class="module-header">
+                    <h2><i class="fas fa-code-branch"></i> Módulo 2: Divide y Vencerás</h2>
+                    <p>Ordenamiento y búsqueda eficiente. MergeSort O(n log n), Búsqueda Binaria O(log n)</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-sort-amount-down"></i> MergeSort por Demanda</h3>
+                        <div class="form-group">
+                            <label>IDs de centros (separados por comas):</label>
+                            <input type="text" id="mergesort-ids" placeholder="C1, C2, C3, C4, C5" value="C1, C2, C3, C4, C5">
+                        </div>
+                        <button class="btn btn-primary" onclick="ordenarMergeSort()">
+                            <i class="fas fa-sort"></i> Ordenar
+                        </button>
+                        <div id="mergesort-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-sort"></i> QuickSort por Prioridad</h3>
+                        <div class="form-group">
+                            <label>IDs de centros:</label>
+                            <input type="text" id="quicksort-ids" placeholder="C1, C2, C3, C4, C5" value="C1, C2, C3, C4, C5">
+                        </div>
+                        <button class="btn btn-primary" onclick="ordenarQuickSort()">
+                            <i class="fas fa-sort"></i> Ordenar
+                        </button>
+                        <div id="quicksort-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-search"></i> Búsqueda Binaria</h3>
+                        <div class="form-group">
+                            <label>IDs de centros:</label>
+                            <input type="text" id="binary-ids" placeholder="C1, C2, C3, C4, C5" value="C1, C2, C3, C4, C5">
+                        </div>
+                        <div class="form-group">
+                            <label>Demanda objetivo:</label>
+                            <input type="number" id="binary-demand" placeholder="70" value="70">
+                        </div>
+                        <button class="btn btn-primary" onclick="buscarBinaria()">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <div id="binary-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 3: Greedy -->
+            <div class="module-content" id="module-greedy">
+                <div class="module-header">
+                    <h2><i class="fas fa-coins"></i> Módulo 3: Algoritmos Greedy</h2>
+                    <p>Asignación de recursos en tiempo real. Complejidad: O(n)</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-gas-pump"></i> Distribuir Combustible</h3>
+                        <div class="form-group">
+                            <label>Cantidad requerida (litros):</label>
+                            <input type="number" id="fuel-amount" placeholder="87" value="87">
+                        </div>
+                        <div class="form-group">
+                            <label>Tamaños de bidones (separados por comas):</label>
+                            <input type="text" id="fuel-sizes" placeholder="50, 20, 10, 5, 2" value="50, 20, 10, 5, 2">
+                        </div>
+                        <button class="btn btn-primary" onclick="distribuirCombustible()">
+                            <i class="fas fa-gas-pump"></i> Distribuir
+                        </button>
+                        <div id="fuel-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-dollar-bill-wave"></i> Distribuir Presupuesto</h3>
+                        <div class="form-group">
+                            <label>Presupuesto total:</label>
+                            <input type="number" id="budget-total" placeholder="1000" value="1000">
+                        </div>
+                        <div class="form-group">
+                            <label>Proyectos (JSON):</label>
+                            <textarea id="budget-projects" rows="5" placeholder='[{"nombre":"Proyecto A","costo":300,"beneficio":400},{"nombre":"Proyecto B","costo":200,"beneficio":350},{"nombre":"Proyecto C","costo":500,"beneficio":600}]'>[{"nombre":"Proyecto A","costo":300,"beneficio":400},{"nombre":"Proyecto B","costo":200,"beneficio":350},{"nombre":"Proyecto C","costo":500,"beneficio":600}]</textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="distribuirPresupuesto()">
+                            <i class="fas fa-money-bill-wave"></i> Distribuir
+                        </button>
+                        <div id="budget-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 4: Grafos -->
+            <div class="module-content" id="module-graphs">
+                <div class="module-header">
+                    <h2><i class="fas fa-project-diagram"></i> Módulo 4: Grafos</h2>
+                    <p>Optimización de rutas. Kruskal O(E log E), Prim O(E log V), Dijkstra O((V+E) log V)</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-network-wired"></i> MST - Kruskal</h3>
+                        <div class="form-group">
+                            <label>Grafo (JSON):</label>
+                            <textarea id="kruskal-graph" rows="6" placeholder='{"vertices": 4, "edges": [{"from": 0, "to": 1, "weight": 10}, {"from": 1, "to": 2, "weight": 15}, {"from": 2, "to": 3, "weight": 4}, {"from": 0, "to": 3, "weight": 5}]}'>{"vertices": 4, "edges": [{"from": 0, "to": 1, "weight": 10}, {"from": 1, "to": 2, "weight": 15}, {"from": 2, "to": 3, "weight": 4}, {"from": 0, "to": 3, "weight": 5}]}</textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularKruskal()">
+                            <i class="fas fa-sitemap"></i> Calcular MST
+                        </button>
+                        <div id="kruskal-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-route"></i> Dijkstra - Caminos Más Cortos</h3>
+                        <div class="form-group">
+                            <label>Vértices:</label>
+                            <input type="number" id="dijkstra-vertices" placeholder="5" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label>Origen:</label>
+                            <input type="number" id="dijkstra-source" placeholder="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Lista de adyacencia (JSON):</label>
+                            <textarea id="dijkstra-graph" rows="5" placeholder='{"0": [[1, 4], [2, 1]], "1": [[3, 2]], "2": [[1, 2], [3, 5]], "3": [[4, 3]], "4": []}'>{"0": [[1, 4], [2, 1]], "1": [[3, 2]], "2": [[1, 2], [3, 5]], "3": [[4, 3]], "4": []}</textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularDijkstra()">
+                            <i class="fas fa-route"></i> Calcular
+                        </button>
+                        <div id="dijkstra-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 5: Programación Dinámica -->
+            <div class="module-content" id="module-dynamic">
+                <div class="module-header">
+                    <h2><i class="fas fa-chart-line"></i> Módulo 5: Programación Dinámica</h2>
+                    <p>Planificación de inversiones. Mochila 0/1 O(n × P)</p>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-briefcase"></i> Mochila 0/1</h3>
+                        <div class="form-group">
+                            <label>Presupuesto:</label>
+                            <input type="number" id="knapsack-budget" placeholder="300" value="300">
+                        </div>
+                        <div class="form-group">
+                            <label>Proyectos (JSON):</label>
+                            <textarea id="knapsack-projects" rows="6" placeholder='[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]'>[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]</textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="resolverMochila()">
+                            <i class="fas fa-calculator"></i> Resolver
+                        </button>
+                        <div id="knapsack-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-balance-scale"></i> Comparar con Greedy</h3>
+                        <div class="form-group">
+                            <label>Presupuesto:</label>
+                            <input type="number" id="compare-knapsack-budget" placeholder="300" value="300">
+                        </div>
+                        <div class="form-group">
+                            <label>Proyectos (JSON):</label>
+                            <textarea id="compare-knapsack-projects" rows="6" placeholder='[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]'>[{"nombre":"Proyecto A","costo":100,"beneficio":150},{"nombre":"Proyecto B","costo":200,"beneficio":250},{"nombre":"Proyecto C","costo":150,"beneficio":200}]</textarea>
+                        </div>
+                        <button class="btn btn-success" onclick="compararMochilaGreedy()">
+                            <i class="fas fa-balance-scale"></i> Comparar
+                        </button>
+                        <div id="compare-knapsack-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>TransRoute S.A. - Sistema de Logística Inteligente</p>
+            <p>Implementación completa de 5 módulos algorítmicos</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Procesando...</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
