@@ -33,17 +33,27 @@ public class GreedyController {
      * Complejidad: O(n) donde n es el número de tamaños disponibles
      */
     @PostMapping("/distribuir-combustible")
-    @Operation(summary = "Distribuye combustible de forma óptima usando algoritmo Greedy",
-                description = "Ejemplo: 87 litros con bidones [50,20,10,5,2] → 1x50 + 1x20 + 1x10 + 1x5 + 1x2")
+    @Operation(summary = "Distribuye combustible usando algoritmo Greedy desde Neo4j",
+                description = "Obtiene camiones de Neo4j y usa sus capacidades de combustible.")
     public ResponseEntity<Map<String, Object>> distribuirCombustible(
-            @Parameter(description = "Cantidad requerida y tamaños disponibles", required = true)
-            @RequestBody FuelDistributionRequest request) {
+            @Parameter(description = "Cantidad requerida y tamaños (opcional, si está vacío usa Neo4j)", required = false)
+            @RequestBody(required = false) FuelDistributionRequest request) {
         
         long startTime = System.nanoTime();
-        Map<Integer, Integer> distribucion = greedyService.distribuirCombustibleGreedy(
-                request.getRequiredAmount(), 
-                request.getAvailableSizes()
-        );
+        Map<Integer, Integer> distribucion;
+        String fuente;
+        
+        if (request != null && request.getAvailableSizes() != null && !request.getAvailableSizes().isEmpty()) {
+            distribucion = greedyService.distribuirCombustibleGreedy(
+                    request.getRequiredAmount(), 
+                    request.getAvailableSizes()
+            );
+            fuente = "request";
+        } else {
+            int requiredAmount = request != null ? request.getRequiredAmount() : greedyService.obtenerCombustibleTotalDisponible() / 2;
+            distribucion = greedyService.distribuirCombustibleDesdeNeo4j(requiredAmount);
+            fuente = "neo4j";
+        }
         long endTime = System.nanoTime();
         
         // Calcular total distribuido
@@ -60,11 +70,14 @@ public class GreedyController {
         response.put("distribucion", distribucion);
         response.put("totalDistribuido", totalDistribuido);
         response.put("cantidadBidonesUsados", cantidadBidones);
-        response.put("cantidadRequerida", request.getRequiredAmount());
-        response.put("diferencia", totalDistribuido - request.getRequiredAmount());
+        int cantidadRequerida = request != null ? request.getRequiredAmount() : 
+                                greedyService.obtenerCombustibleTotalDisponible() / 2;
+        response.put("cantidadRequerida", cantidadRequerida);
+        response.put("diferencia", totalDistribuido - cantidadRequerida);
         response.put("algoritmo", "Greedy (Cambio de Monedas)");
         response.put("complejidad", "O(n)");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+        response.put("fuente", fuente);
         
         return ResponseEntity.ok(response);
     }

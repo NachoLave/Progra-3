@@ -32,19 +32,37 @@ public class DynamicProgrammingController {
      * Complejidad: O(n × P) donde n = proyectos, P = presupuesto
      */
     @PostMapping("/mochila")
-    @Operation(summary = "Resuelve el problema de la mochila 0/1 para optimizar inversiones",
-                description = "Complejidad: O(n × P). Determina qué proyectos financiar con presupuesto fijo para maximizar beneficio.")
+    @Operation(summary = "Resuelve el problema de la mochila 0/1 desde Neo4j",
+                description = "Complejidad: O(n × P). Obtiene rutas de Neo4j y las convierte en proyectos de inversión.")
     public ResponseEntity<Map<String, Object>> resolverMochila(
-            @Parameter(description = "Lista de proyectos y presupuesto disponible", required = true)
-            @RequestBody KnapsackRequest request) {
+            @Parameter(description = "Lista de proyectos y presupuesto (opcional, si está vacío usa Neo4j)", required = false)
+            @RequestBody(required = false) KnapsackRequest request) {
         
         long startTime = System.nanoTime();
+        List<DynamicProgrammingService.Proyecto> proyectos;
+        int presupuesto;
+        boolean optimized;
+        String fuente;
+        
+        if (request != null && request.getProyectos() != null && !request.getProyectos().isEmpty()) {
+            proyectos = request.getProyectos();
+            presupuesto = request.getPresupuesto();
+            optimized = request.getOptimized() != null ? request.getOptimized() : false;
+            fuente = "request";
+        } else {
+            proyectos = dpService.crearProyectosDesdeRutas();
+            // Presupuesto basado en el costo total de las rutas
+            int costoTotal = proyectos.stream().mapToInt(p -> p.costo).sum();
+            presupuesto = costoTotal / 2; // Usar la mitad como presupuesto
+            optimized = false;
+            fuente = "neo4j";
+        }
         
         DynamicProgrammingService.SolucionMochila solucion;
-        if (request.getOptimized()) {
-            solucion = dpService.resolverMochila01Optimizado(request.getProyectos(), request.getPresupuesto());
+        if (optimized) {
+            solucion = dpService.resolverMochila01Optimizado(proyectos, presupuesto);
         } else {
-            solucion = dpService.resolverMochila01(request.getProyectos(), request.getPresupuesto());
+            solucion = dpService.resolverMochila01(proyectos, presupuesto);
         }
         
         long endTime = System.nanoTime();
@@ -55,13 +73,14 @@ public class DynamicProgrammingController {
         response.put("beneficioTotal", solucion.beneficioTotal);
         response.put("presupuestoUtilizado", solucion.presupuestoUtilizado);
         response.put("presupuestoRestante", solucion.presupuestoDisponible);
-        response.put("presupuestoInicial", request.getPresupuesto());
+        response.put("presupuestoInicial", presupuesto);
         response.put("numeroProyectosSeleccionados", solucion.proyectosSeleccionados.size());
-        response.put("numeroProyectosDisponibles", request.getProyectos().size());
+        response.put("numeroProyectosDisponibles", proyectos.size());
         response.put("algoritmo", "Programación Dinámica (Mochila 0/1)");
         response.put("complejidad", "O(n × P)");
-        response.put("version", request.getOptimized() ? "Optimizada (espacio O(P))" : "Estándar (espacio O(n × P))");
+        response.put("version", optimized ? "Optimizada (espacio O(P))" : "Estándar (espacio O(n × P))");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+        response.put("fuente", fuente);
         
         return ResponseEntity.ok(response);
     }

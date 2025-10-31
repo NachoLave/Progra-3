@@ -1,5 +1,8 @@
 package com.transroute.logistics.service;
 
+import com.transroute.logistics.model.Truck;
+import com.transroute.logistics.repository.TruckRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,6 +22,41 @@ import java.util.*;
  */
 @Service
 public class GreedyService {
+    
+    @Autowired
+    private TruckRepository truckRepository;
+    
+    /**
+     * Obtiene camiones desde Neo4j y distribuye combustible usando sus capacidades
+     */
+    public Map<Integer, Integer> distribuirCombustibleDesdeNeo4j(int requiredAmount) {
+        List<Truck> trucks = truckRepository.findAll();
+        List<Integer> availableSizes = new ArrayList<>();
+        
+        // Obtener capacidades únicas de combustible de los camiones
+        Set<Integer> uniqueCapacities = new HashSet<>();
+        for (Truck truck : trucks) {
+            if (truck.getFuelCapacity() != null) {
+                uniqueCapacities.add(truck.getFuelCapacity());
+            }
+        }
+        
+        availableSizes.addAll(uniqueCapacities);
+        availableSizes.sort(Collections.reverseOrder());
+        
+        return distribuirCombustibleGreedy(requiredAmount, availableSizes);
+    }
+    
+    /**
+     * Obtiene la cantidad total de combustible disponible en todos los camiones
+     */
+    public int obtenerCombustibleTotalDisponible() {
+        List<Truck> trucks = truckRepository.findAll();
+        return trucks.stream()
+                .filter(t -> t.getCurrentFuel() != null)
+                .mapToInt(Truck::getCurrentFuel)
+                .sum();
+    }
 
     /**
      * Distribuye combustible de forma óptima usando algoritmo Greedy

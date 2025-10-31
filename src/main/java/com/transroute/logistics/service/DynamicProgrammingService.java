@@ -1,5 +1,8 @@
 package com.transroute.logistics.service;
 
+import com.transroute.logistics.model.Route;
+import com.transroute.logistics.repository.RouteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -17,6 +20,32 @@ import java.util.*;
  */
 @Service
 public class DynamicProgrammingService {
+    
+    @Autowired
+    private RouteRepository routeRepository;
+    
+    /**
+     * Crea proyectos basados en rutas de Neo4j
+     * Cada ruta se convierte en un proyecto de inversión
+     */
+    public List<Proyecto> crearProyectosDesdeRutas() {
+        List<Route> routes = routeRepository.findAll();
+        List<Proyecto> proyectos = new ArrayList<>();
+        
+        for (Route route : routes) {
+            // El costo del proyecto es el costo de la ruta
+            int costo = route.getCost() != null ? route.getCost().intValue() : 0;
+            // El beneficio es estimado basado en distancia/eficiencia
+            int beneficio = route.getDistance() != null ? (int) (route.getDistance() * 10) : 0;
+            
+            String nombre = route.getName() != null ? route.getName() : 
+                           route.getId() != null ? "Proyecto " + route.getId() : "Proyecto Ruta";
+            
+            proyectos.add(new Proyecto(nombre, costo, beneficio));
+        }
+        
+        return proyectos;
+    }
 
     /**
      * Representa un proyecto de inversión
