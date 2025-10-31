@@ -10,10 +10,15 @@ function hideLoading() {
     document.getElementById('loading-overlay').classList.remove('active');
 }
 
-// Show Result - Formato mejorado e intuitivo
+// Show Result - Formato mejorado e intuitivo - Ocupa toda la pantalla
 function showResult(elementId, data, isJson = false) {
     const element = document.getElementById(elementId);
     element.classList.add('active');
+    
+    // Scroll suave hacia el resultado
+    setTimeout(() => {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
     
     // Detectar el tipo de resultado según el módulo
     let html = '';
@@ -61,7 +66,8 @@ function showResult(elementId, data, isJson = false) {
         html = formatGenericResult(data);
     }
     
-    element.innerHTML = html;
+    // Envolver en un contenedor para ocupar toda la pantalla
+    element.innerHTML = '<div class="result-full-width">' + html + '</div>';
 }
 
 // Formatear resultado de recursividad
