@@ -305,15 +305,17 @@ function formatCompareResultModal(data) {
                     Diferencia: ${(diferencia / 1000).toFixed(2)} μs
                 </div>
             </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Por Qué?
-                </div>
-                <div class="modal-explanation-text">
-                    Aunque ambos métodos tienen la misma complejidad temporal <strong>O(n)</strong>, la versión <strong>iterativa</strong> 
-                    generalmente es más eficiente porque no requiere el overhead de la pila de llamadas recursivas. Además, tiene mejor 
-                    complejidad espacial <strong>O(1)</strong> vs <strong>O(n)</strong> de la recursión.
-                </div>
+        </div>
+        
+        <!-- Explicación a lo largo completo -->
+        <div class="modal-explanation">
+            <div class="modal-explanation-title">
+                <i class="fas fa-lightbulb"></i> ¿Por Qué?
+            </div>
+            <div class="modal-explanation-text">
+                Aunque ambos métodos tienen la misma complejidad temporal <strong>O(n)</strong>, la versión <strong>iterativa</strong> 
+                generalmente es más eficiente porque no requiere el overhead de la pila de llamadas recursivas. Además, tiene mejor 
+                complejidad espacial <strong>O(1)</strong> vs <strong>O(n)</strong> de la recursión.
             </div>
         </div>
     `;
@@ -854,15 +856,17 @@ function formatBinarySearchResultModal(data) {
                     <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
                 </div>
             </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                </div>
-                <div class="modal-explanation-text">
-                    La <strong>Búsqueda Binaria</strong> aprovecha que la lista está ordenada. En cada paso, compara el elemento central 
-                    con el objetivo y elimina la mitad de los elementos restantes. Por eso su complejidad es <strong>O(log n)</strong>, 
-                    mucho más eficiente que una búsqueda lineal O(n) para listas ordenadas.
-                </div>
+        </div>
+        
+        <!-- Explicación a lo largo completo -->
+        <div class="modal-explanation">
+            <div class="modal-explanation-title">
+                <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+            </div>
+            <div class="modal-explanation-text">
+                La <strong>Búsqueda Binaria</strong> aprovecha que la lista está ordenada. En cada paso, compara el elemento central 
+                con el objetivo y elimina la mitad de los elementos restantes. Por eso su complejidad es <strong>O(log n)</strong>, 
+                mucho más eficiente que una búsqueda lineal O(n) para listas ordenadas.
             </div>
         </div>
     `;
@@ -1304,15 +1308,17 @@ function formatKnapsackComparisonModal(data) {
                     Diferencia: $${diferencia}
                 </div>
             </div>
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Por Qué?
-                </div>
-                <div class="modal-explanation-text">
-                    <strong>Programación Dinámica</strong> siempre encuentra la solución óptima garantizada porque explora todas las 
-                    combinaciones posibles. <strong>Greedy</strong> es más rápido pero puede fallar al elegir localmente lo mejor sin considerar 
-                    el impacto global. Esta comparación muestra por qué DP es preferible para problemas donde se requiere la solución óptima.
-                </div>
+        </div>
+        
+        <!-- Explicación a lo largo completo -->
+        <div class="modal-explanation">
+            <div class="modal-explanation-title">
+                <i class="fas fa-lightbulb"></i> ¿Por Qué?
+            </div>
+            <div class="modal-explanation-text">
+                <strong>Programación Dinámica</strong> siempre encuentra la solución óptima garantizada porque explora todas las 
+                combinaciones posibles. <strong>Greedy</strong> es más rápido pero puede fallar al elegir localmente lo mejor sin considerar 
+                el impacto global. Esta comparación muestra por qué DP es preferible para problemas donde se requiere la solución óptima.
             </div>
         </div>
     `;
