@@ -675,21 +675,27 @@ function verVisualizacionGreedy() {
 }
 
 function verVisualizacionGrafo(type) {
-    const graphJson = document.getElementById(`${type}-graph`).value;
-    try {
-        const graph = JSON.parse(graphJson);
-        visualizer.visualizeGraph(graph.edges, `${type}-viz`);
-    } catch (error) {
-        alert('Error al parsear el grafo: ' + error.message);
+    if (type === 'kruskal') {
+        if (kruskalEdges.length === 0) {
+            alert('Agrega rutas primero');
+            return;
+        }
+        visualizer.visualizeGraph(kruskalEdges, 'kruskal-viz');
+    } else if (type === 'dijkstra') {
+        verVisualizacionGrafoDijkstra();
     }
 }
 
 async function verTablaDP() {
     const presupuesto = parseInt(document.getElementById('knapsack-budget').value);
-    const proyectos = JSON.parse(document.getElementById('knapsack-projects').value);
+    
+    if (proyectosMochila.length === 0) {
+        alert('Agrega proyectos primero');
+        return;
+    }
     
     const request = {
-        proyectos,
+        proyectos: proyectosMochila,
         presupuesto
     };
     
@@ -866,12 +872,20 @@ async function distribuirPresupuesto() {
     showLoading();
     try {
         const presupuestoTotal = parseFloat(document.getElementById('budget-total').value);
-        const proyectos = JSON.parse(document.getElementById('budget-projects').value);
+        
+        if (proyectosBudget.length === 0) {
+            // Usar datos de ejemplo
+            proyectosBudget = [
+                { nombre: "Proyecto A", costo: 300, beneficio: 400 },
+                { nombre: "Proyecto B", costo: 200, beneficio: 350 },
+                { nombre: "Proyecto C", costo: 500, beneficio: 600 }
+            ];
+        }
         
         const response = await fetch(`${API_BASE}/greedy/distribuir-presupuesto?presupuestoTotal=${presupuestoTotal}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(proyectos)
+            body: JSON.stringify(proyectosBudget)
         });
         
         const data = await response.json();
@@ -885,15 +899,137 @@ async function distribuirPresupuesto() {
 
 // ==================== MÓDULO 4: GRAFOS ====================
 
+// Almacenar rutas agregadas
+let kruskalEdges = [];
+let dijkstraEdges = {};
+
+// Agregar ruta para Kruskal
+function agregarRutaKruskal() {
+    const from = parseInt(document.getElementById('edge-from').value);
+    const to = parseInt(document.getElementById('edge-to').value);
+    const weight = parseFloat(document.getElementById('edge-weight').value);
+    
+    if (isNaN(from) || isNaN(to) || isNaN(weight)) {
+        alert('Por favor completa todos los campos');
+        return;
+    }
+    
+    const ruta = { from, to, weight };
+    kruskalEdges.push(ruta);
+    
+    actualizarListaRutasKruskal();
+    
+    // Limpiar inputs
+    document.getElementById('edge-from').value = '';
+    document.getElementById('edge-to').value = '';
+    document.getElementById('edge-weight').value = '';
+}
+
+function actualizarListaRutasKruskal() {
+    const container = document.getElementById('rutas-agregadas');
+    if (kruskalEdges.length === 0) {
+        container.innerHTML = '<div class="no-rutas">No hay rutas agregadas</div>';
+        return;
+    }
+    
+    let html = '<div class="rutas-header">Rutas agregadas:</div>';
+    kruskalEdges.forEach((ruta, index) => {
+        html += `
+            <div class="ruta-item">
+                <span class="ruta-info">${ruta.from} → ${ruta.to} (Peso: ${ruta.weight})</span>
+                <button class="btn-remove" onclick="eliminarRutaKruskal(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function eliminarRutaKruskal(index) {
+    kruskalEdges.splice(index, 1);
+    actualizarListaRutasKruskal();
+}
+
+// Agregar ruta para Dijkstra
+function agregarRutaDijkstra() {
+    const from = parseInt(document.getElementById('dijkstra-from').value);
+    const to = parseInt(document.getElementById('dijkstra-to').value);
+    const weight = parseFloat(document.getElementById('dijkstra-weight').value);
+    
+    if (isNaN(from) || isNaN(to) || isNaN(weight)) {
+        alert('Por favor completa todos los campos');
+        return;
+    }
+    
+    if (!dijkstraEdges[from]) {
+        dijkstraEdges[from] = [];
+    }
+    
+    dijkstraEdges[from].push([to, weight]);
+    
+    actualizarListaRutasDijkstra();
+    
+    // Limpiar inputs
+    document.getElementById('dijkstra-from').value = '';
+    document.getElementById('dijkstra-to').value = '';
+    document.getElementById('dijkstra-weight').value = '';
+}
+
+function actualizarListaRutasDijkstra() {
+    const container = document.getElementById('dijkstra-rutas-agregadas');
+    const totalRutas = Object.values(dijkstraEdges).reduce((sum, arr) => sum + arr.length, 0);
+    
+    if (totalRutas === 0) {
+        container.innerHTML = '<div class="no-rutas">No hay conexiones agregadas</div>';
+        return;
+    }
+    
+    let html = '<div class="rutas-header">Conexiones agregadas:</div>';
+    Object.keys(dijkstraEdges).forEach(from => {
+        dijkstraEdges[from].forEach(([to, weight], idx) => {
+            const fullIndex = Object.keys(dijkstraEdges).indexOf(from) * 1000 + idx;
+            html += `
+                <div class="ruta-item">
+                    <span class="ruta-info">${from} → ${to} (Distancia: ${weight})</span>
+                    <button class="btn-remove" onclick="eliminarRutaDijkstra(${from}, ${idx})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
+    });
+    container.innerHTML = html;
+}
+
+function eliminarRutaDijkstra(from, idx) {
+    if (dijkstraEdges[from]) {
+        dijkstraEdges[from].splice(idx, 1);
+        if (dijkstraEdges[from].length === 0) {
+            delete dijkstraEdges[from];
+        }
+    }
+    actualizarListaRutasDijkstra();
+}
+
 async function calcularKruskal() {
     showLoading();
     try {
-        const graphJson = document.getElementById('kruskal-graph').value;
-        const graph = JSON.parse(graphJson);
+        const vertices = parseInt(document.getElementById('kruskal-vertices').value) || 4;
+        
+        if (kruskalEdges.length === 0) {
+            // Usar datos de ejemplo si no hay rutas
+            kruskalEdges = [
+                { from: 0, to: 1, weight: 10 },
+                { from: 1, to: 2, weight: 15 },
+                { from: 2, to: 3, weight: 4 },
+                { from: 0, to: 3, weight: 5 }
+            ];
+        }
         
         const request = {
-            vertices: graph.vertices,
-            edges: graph.edges
+            vertices: vertices,
+            edges: kruskalEdges
         };
         
         const response = await fetch(`${API_BASE}/graphs/kruskal/mst`, {
@@ -904,6 +1040,11 @@ async function calcularKruskal() {
         
         const data = await response.json();
         showResult('kruskal-result', data, true);
+        
+        // Mostrar visualización del grafo
+        setTimeout(() => {
+            verVisualizacionGrafo('kruskal');
+        }, 500);
     } catch (error) {
         showResult('kruskal-result', { error: 'Error al calcular MST: ' + error.message });
     } finally {
@@ -914,14 +1055,24 @@ async function calcularKruskal() {
 async function calcularDijkstra() {
     showLoading();
     try {
-        const vertices = parseInt(document.getElementById('dijkstra-vertices').value);
-        const source = parseInt(document.getElementById('dijkstra-source').value);
-        const adjacencyList = JSON.parse(document.getElementById('dijkstra-graph').value);
+        const vertices = parseInt(document.getElementById('dijkstra-vertices').value) || 5;
+        const source = parseInt(document.getElementById('dijkstra-source').value) || 0;
         
-        // Convert adjacency list format
+        if (Object.keys(dijkstraEdges).length === 0) {
+            // Usar datos de ejemplo
+            dijkstraEdges = {
+                0: [[1, 4], [2, 1]],
+                1: [[3, 2]],
+                2: [[1, 2], [3, 5]],
+                3: [[4, 3]],
+                4: []
+            };
+        }
+        
+        // Convertir a formato numérico
         const convertedAdjList = {};
-        for (const [key, value] of Object.entries(adjacencyList)) {
-            convertedAdjList[parseInt(key)] = value.map(v => [v[0], v[1]]);
+        for (const [key, value] of Object.entries(dijkstraEdges)) {
+            convertedAdjList[parseInt(key)] = value;
         }
         
         const request = {
@@ -938,6 +1089,11 @@ async function calcularDijkstra() {
         
         const data = await response.json();
         showResult('dijkstra-result', data, true);
+        
+        // Mostrar visualización
+        setTimeout(() => {
+            verVisualizacionGrafoDijkstra();
+        }, 500);
     } catch (error) {
         showResult('dijkstra-result', { error: 'Error al calcular Dijkstra: ' + error.message });
     } finally {
@@ -945,16 +1101,151 @@ async function calcularDijkstra() {
     }
 }
 
+function verVisualizacionGrafoDijkstra() {
+    const vertices = parseInt(document.getElementById('dijkstra-vertices').value) || 5;
+    const edges = [];
+    
+    for (const [from, connections] of Object.entries(dijkstraEdges)) {
+        connections.forEach(([to, weight]) => {
+            edges.push({ from: parseInt(from), to, weight });
+        });
+    }
+    
+    if (edges.length > 0) {
+        visualizer.visualizeGraph(edges, 'dijkstra-viz');
+    }
+}
+
 // ==================== MÓDULO 5: PROGRAMACIÓN DINÁMICA ====================
+
+// Almacenar proyectos
+let proyectosMochila = [];
+let proyectosBudget = [];
+
+// Agregar proyecto para mochila
+function agregarProyectoMochila() {
+    const nombre = document.getElementById('knapsack-project-name').value.trim();
+    const costo = parseInt(document.getElementById('knapsack-project-costo').value);
+    const beneficio = parseInt(document.getElementById('knapsack-project-beneficio').value);
+    
+    if (!nombre || isNaN(costo) || isNaN(beneficio)) {
+        alert('Por favor completa todos los campos');
+        return;
+    }
+    
+    const proyecto = { nombre, costo, beneficio };
+    proyectosMochila.push(proyecto);
+    
+    actualizarListaProyectosMochila();
+    
+    // Limpiar inputs
+    document.getElementById('knapsack-project-name').value = '';
+    document.getElementById('knapsack-project-costo').value = '';
+    document.getElementById('knapsack-project-beneficio').value = '';
+}
+
+function actualizarListaProyectosMochila() {
+    const container = document.getElementById('knapsack-proyectos-agregados');
+    if (proyectosMochila.length === 0) {
+        container.innerHTML = '<div class="no-rutas">No hay proyectos agregados</div>';
+        return;
+    }
+    
+    let html = '<div class="rutas-header">Proyectos agregados:</div>';
+    proyectosMochila.forEach((proyecto, index) => {
+        const ratio = (proyecto.beneficio / proyecto.costo).toFixed(2);
+        html += `
+            <div class="ruta-item">
+                <div class="proyecto-info">
+                    <div class="proyecto-nombre"><strong>${proyecto.nombre}</strong></div>
+                    <div class="proyecto-detalles">
+                        Costo: $${proyecto.costo} | Beneficio: $${proyecto.beneficio} | Ratio: ${ratio}
+                    </div>
+                </div>
+                <button class="btn-remove" onclick="eliminarProyectoMochila(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function eliminarProyectoMochila(index) {
+    proyectosMochila.splice(index, 1);
+    actualizarListaProyectosMochila();
+}
+
+// Agregar proyecto para budget (Greedy)
+function agregarProyecto() {
+    const nombre = document.getElementById('project-name').value.trim();
+    const costo = parseFloat(document.getElementById('project-costo').value);
+    const beneficio = parseFloat(document.getElementById('project-beneficio').value);
+    
+    if (!nombre || isNaN(costo) || isNaN(beneficio)) {
+        alert('Por favor completa todos los campos');
+        return;
+    }
+    
+    const proyecto = { nombre, costo, beneficio };
+    proyectosBudget.push(proyecto);
+    
+    actualizarListaProyectos();
+    
+    // Limpiar inputs
+    document.getElementById('project-name').value = '';
+    document.getElementById('project-costo').value = '';
+    document.getElementById('project-beneficio').value = '';
+}
+
+function actualizarListaProyectos() {
+    const container = document.getElementById('proyectos-agregados');
+    if (proyectosBudget.length === 0) {
+        container.innerHTML = '<div class="no-rutas">No hay proyectos agregados</div>';
+        return;
+    }
+    
+    let html = '<div class="rutas-header">Proyectos agregados:</div>';
+    proyectosBudget.forEach((proyecto, index) => {
+        const ratio = (proyecto.beneficio / proyecto.costo).toFixed(2);
+        html += `
+            <div class="ruta-item">
+                <div class="proyecto-info">
+                    <div class="proyecto-nombre"><strong>${proyecto.nombre}</strong></div>
+                    <div class="proyecto-detalles">
+                        Costo: $${proyecto.costo} | Beneficio: $${proyecto.beneficio} | Ratio: ${ratio}
+                    </div>
+                </div>
+                <button class="btn-remove" onclick="eliminarProyecto(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function eliminarProyecto(index) {
+    proyectosBudget.splice(index, 1);
+    actualizarListaProyectos();
+}
 
 async function resolverMochila() {
     showLoading();
     try {
         const presupuesto = parseInt(document.getElementById('knapsack-budget').value);
-        const proyectos = JSON.parse(document.getElementById('knapsack-projects').value);
+        
+        if (proyectosMochila.length === 0) {
+            // Usar datos de ejemplo
+            proyectosMochila = [
+                { nombre: "Proyecto A", costo: 100, beneficio: 150 },
+                { nombre: "Proyecto B", costo: 200, beneficio: 250 },
+                { nombre: "Proyecto C", costo: 150, beneficio: 200 }
+            ];
+        }
         
         const request = {
-            proyectos,
+            proyectos: proyectosMochila,
             presupuesto,
             optimized: false
         };
@@ -978,7 +1269,16 @@ async function compararMochilaGreedy() {
     showLoading();
     try {
         const presupuesto = parseInt(document.getElementById('compare-knapsack-budget').value);
-        const proyectos = JSON.parse(document.getElementById('compare-knapsack-projects').value);
+        
+        // Usar los proyectos del formulario principal
+        let proyectos = proyectosMochila;
+        if (proyectos.length === 0) {
+            proyectos = [
+                { nombre: "Proyecto A", costo: 100, beneficio: 150 },
+                { nombre: "Proyecto B", costo: 200, beneficio: 250 },
+                { nombre: "Proyecto C", costo: 150, beneficio: 200 }
+            ];
+        }
         
         const request = {
             proyectos,
