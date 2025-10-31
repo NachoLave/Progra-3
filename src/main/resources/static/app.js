@@ -161,17 +161,6 @@ function formatRecursiveResultModal(data, elementId) {
                     </div>
                     ` : ''}
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        Se utilizó un algoritmo <strong>recursivo</strong> que divide el problema en subproblemas más pequeños. 
-                        La función suma recursivamente cada tramo hasta llegar al caso base (cuando no hay más tramos). 
-                        La complejidad es <strong>O(n)</strong> donde n es el número de tramos, ya que cada tramo se procesa exactamente una vez.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -181,6 +170,18 @@ function formatRecursiveResultModal(data, elementId) {
                         <i class="fas fa-steps"></i> Proceso Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    Se utilizó un algoritmo <strong>recursivo</strong> que divide el problema en subproblemas más pequeños. 
+                    La función suma recursivamente cada tramo hasta llegar al caso base (cuando no hay más tramos). 
+                    La complejidad es <strong>O(n)</strong> donde n es el número de tramos, ya que cada tramo se procesa exactamente una vez.
                 </div>
             </div>
         </div>
@@ -242,17 +243,6 @@ function formatCombinedMetricsModal(data) {
                         <div class="modal-stat-value">${data.complejidad}</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
-                    </div>
-                    <div class="modal-explanation-text">
-                        Este cálculo combina costo y distancia para obtener métricas derivadas como el <strong>costo por kilómetro</strong>, 
-                        que es útil para evaluar la eficiencia de las rutas. Se calcula recursivamente sumando costos y distancias por tramo, 
-                        y luego dividiendo el costo total entre la distancia total.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -262,6 +252,18 @@ function formatCombinedMetricsModal(data) {
                         <i class="fas fa-steps"></i> Cálculo Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
+                </div>
+                <div class="modal-explanation-text">
+                    Este cálculo combina costo y distancia para obtener métricas derivadas como el <strong>costo por kilómetro</strong>, 
+                    que es útil para evaluar la eficiencia de las rutas. Se calcula recursivamente sumando costos y distancias por tramo, 
+                    y luego dividiendo el costo total entre la distancia total.
                 </div>
             </div>
         </div>
@@ -789,17 +791,6 @@ function formatSortResultModal(data) {
                         <div class="modal-stat-value">${(data.tiempoEjecucionNanosegundos / 1000).toFixed(2)} μs</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        El algoritmo <strong>${data.algoritmo}</strong> utiliza la estrategia de <strong>Divide y Vencerás</strong>. 
-                        Divide el array en mitades, ordena cada mitad recursivamente, y luego combina los resultados ordenados. 
-                        La complejidad es <strong>${data.complejidad}</strong> porque divide el problema log(n) veces y procesa n elementos en cada nivel.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -809,6 +800,18 @@ function formatSortResultModal(data) {
                         <i class="fas fa-steps"></i> Ordenamiento Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    El algoritmo <strong>${data.algoritmo}</strong> utiliza la estrategia de <strong>Divide y Vencerás</strong>. 
+                    Divide el array en mitades, ordena cada mitad recursivamente, y luego combina los resultados ordenados. 
+                    La complejidad es <strong>${data.complejidad}</strong> porque divide el problema log(n) veces y procesa n elementos en cada nivel.
                 </div>
             </div>
         </div>
@@ -923,17 +926,6 @@ function formatFuelDistributionModal(data) {
                         <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante. 
-                        Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados. 
-                        La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -943,6 +935,18 @@ function formatFuelDistributionModal(data) {
                         <i class="fas fa-steps"></i> Distribución Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante. 
+                    Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados. 
+                    La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.
                 </div>
             </div>
         </div>
@@ -993,17 +997,6 @@ function formatBudgetDistributionModal(data) {
                         <div class="modal-stat-value">${distribucion.length}</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
-                        y asignando presupuesto empezando por los más eficientes. Permite asignar fracciones de proyectos cuando el presupuesto 
-                        no alcanza para completarlos.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -1013,6 +1006,18 @@ function formatBudgetDistributionModal(data) {
                         <i class="fas fa-steps"></i> Asignación Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
+                    y asignando presupuesto empezando por los más eficientes. Permite asignar fracciones de proyectos cuando el presupuesto 
+                    no alcanza para completarlos.
                 </div>
             </div>
         </div>
@@ -1066,18 +1071,6 @@ function formatMSTResultModal(data, algoritmo) {
                         <div class="modal-stat-value">${data.complejidad}</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
-                        los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
-                        'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
-                        'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -1087,6 +1080,19 @@ function formatMSTResultModal(data, algoritmo) {
                         <i class="fas fa-steps"></i> Construcción Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
+                    los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
+                    'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
+                    'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}
                 </div>
             </div>
         </div>
@@ -1149,17 +1155,6 @@ function formatDijkstraResultModal(data) {
                     `).join('')}
                     ${entries.length > 5 ? `<div style="color: var(--text-secondary); margin-top: 1rem;">... y ${entries.length - 5} más</div>` : ''}
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
-                        vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
-                        primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -1169,6 +1164,18 @@ function formatDijkstraResultModal(data) {
                         <i class="fas fa-steps"></i> Exploración Paso a Paso
                     </div>
                     ${stepsHtml}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
+                    vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
+                    primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.
                 </div>
             </div>
         </div>
@@ -1234,18 +1241,6 @@ function formatKnapsackResultModal(data) {
                         <div class="modal-stat-value">${data.complejidad}</div>
                     </div>
                 </div>
-                
-                <div class="modal-explanation">
-                    <div class="modal-explanation-title">
-                        <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                    </div>
-                    <div class="modal-explanation-text">
-                        La <strong>Programación Dinámica</strong> resuelve el problema de la mochila 0/1 construyendo una tabla donde 
-                        dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w. La solución óptima se 
-                        encuentra al considerar todas las combinaciones posibles. Complejidad <strong>O(n × P)</strong> garantiza encontrar la 
-                        solución globalmente óptima.
-                    </div>
-                </div>
             </div>
             
             <!-- Columna Derecha: Paso a Paso -->
@@ -1255,6 +1250,19 @@ function formatKnapsackResultModal(data) {
                         <i class="fas fa-steps"></i> Selección Paso a Paso
                     </div>
                     ${stepsHtml || '<div style="color: var(--text-secondary); text-align: center; padding: 2rem;">Los proyectos seleccionados se muestran en la lista de la izquierda</div>'}
+                </div>
+            </div>
+            
+            <!-- Explicación a lo largo completo -->
+            <div class="modal-explanation">
+                <div class="modal-explanation-title">
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                </div>
+                <div class="modal-explanation-text">
+                    La <strong>Programación Dinámica</strong> resuelve el problema de la mochila 0/1 construyendo una tabla donde 
+                    dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w. La solución óptima se 
+                    encuentra al considerar todas las combinaciones posibles. Complejidad <strong>O(n × P)</strong> garantiza encontrar la 
+                    solución globalmente óptima.
                 </div>
             </div>
         </div>

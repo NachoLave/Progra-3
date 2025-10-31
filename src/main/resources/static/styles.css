@@ -1798,11 +1798,12 @@ body {
 
 /* Modal Result Sections */
 .modal-result-section {
-    margin-bottom: 3rem;
+    margin-bottom: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
     align-items: start;
+    width: 100%;
 }
 
 @media (max-width: 1200px) {
@@ -1884,6 +1885,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    width: 100%;
+}
+
+.modal-left-column > * {
+    width: 100%;
 }
 
 .modal-right-column {
@@ -1893,6 +1899,7 @@ body {
     max-height: calc(100vh - 300px);
     overflow-y: auto;
     padding-right: 1rem;
+    width: 100%;
 }
 
 /* Scrollbar para columna derecha */
@@ -1995,6 +2002,9 @@ body {
     border-radius: 16px;
     border: 2px solid var(--border-color);
     margin-top: 3rem;
+    width: 100%;
+    grid-column: 1 / -1;
+    max-width: 100%;
 }
 
 .modal-explanation-title {
