@@ -1,5 +1,10 @@
 package com.transroute.logistics.service;
 
+import com.transroute.logistics.model.DistributionCenter;
+import com.transroute.logistics.model.Route;
+import com.transroute.logistics.repository.DistributionCenterRepository;
+import com.transroute.logistics.repository.RouteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,6 +25,84 @@ import java.util.*;
  */
 @Service
 public class GraphService {
+    
+    @Autowired
+    private RouteRepository routeRepository;
+    
+    @Autowired
+    private DistributionCenterRepository distributionCenterRepository;
+    
+    /**
+     * Obtiene todas las rutas desde Neo4j y construye el grafo automáticamente
+     * Usa el costo como peso de las aristas
+     */
+    public List<Edge> obtenerRutasYConstruirGrafoParaKruskal() {
+        List<Route> routes = routeRepository.findAll();
+        List<DistributionCenter> centers = distributionCenterRepository.findAll();
+        
+        // Crear mapa de ID de centro a índice
+        Map<String, Integer> centerToIndex = new HashMap<>();
+        for (int i = 0; i < centers.size(); i++) {
+            centerToIndex.put(centers.get(i).getId(), i);
+        }
+        
+        List<Edge> edges = new ArrayList<>();
+        
+        // Por ahora, asignamos índices secuenciales a las rutas
+        // En una implementación real, necesitaríamos relaciones en Neo4j
+        for (int i = 0; i < routes.size(); i++) {
+            Route route = routes.get(i);
+            // Para simplicidad, usamos índices basados en orden
+            // Esto debería mejorarse con relaciones reales en Neo4j
+            int from = i % centers.size();
+            int to = (i + 1) % centers.size();
+            if (from == to) to = (to + 1) % centers.size();
+            
+            double weight = route.getCost() != null ? route.getCost() : route.getDistance() != null ? route.getDistance() : 0.0;
+            edges.add(new Edge(from, to, weight));
+        }
+        
+        return edges;
+    }
+    
+    /**
+     * Obtiene rutas desde Neo4j y construye lista de adyacencia para Prim/Dijkstra
+     */
+    public Map<Integer, List<int[]>> obtenerRutasYConstruirListaAdyacencia() {
+        List<Route> routes = routeRepository.findAll();
+        List<DistributionCenter> centers = distributionCenterRepository.findAll();
+        
+        Map<Integer, List<int[]>> adjacencyList = new HashMap<>();
+        
+        // Inicializar listas de adyacencia para cada centro
+        for (int i = 0; i < centers.size(); i++) {
+            adjacencyList.put(i, new ArrayList<>());
+        }
+        
+        // Agregar aristas basadas en rutas
+        // Nota: Esto es una simplificación. Idealmente, las relaciones en Neo4j deberían indicar
+        // qué centros conecta cada ruta
+        for (int i = 0; i < routes.size(); i++) {
+            Route route = routes.get(i);
+            int from = i % centers.size();
+            int to = (i + 1) % centers.size();
+            if (from == to) to = (to + 1) % centers.size();
+            
+            double weight = route.getCost() != null ? route.getCost() : route.getDistance() != null ? route.getDistance() : 0.0;
+            
+            adjacencyList.get(from).add(new int[]{to, (int) weight});
+            adjacencyList.get(to).add(new int[]{from, (int) weight}); // Grafo no dirigido
+        }
+        
+        return adjacencyList;
+    }
+    
+    /**
+     * Obtiene el número de vértices (centros de distribución)
+     */
+    public int obtenerNumeroVertices() {
+        return (int) distributionCenterRepository.count();
+    }
 
     /**
      * Representa una arista en el grafo

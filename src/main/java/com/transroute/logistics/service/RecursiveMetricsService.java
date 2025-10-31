@@ -1,6 +1,11 @@
 package com.transroute.logistics.service;
 
+import com.transroute.logistics.model.Route;
+import com.transroute.logistics.repository.RouteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Servicio para cálculos recursivos de métricas operativas básicas
@@ -13,6 +18,52 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class RecursiveMetricsService {
+    
+    @Autowired
+    private RouteRepository routeRepository;
+    
+    /**
+     * Obtiene todas las rutas desde Neo4j y calcula el costo total recursivamente
+     */
+    public double obtenerRutasYCalcularCostoTotalRecursivo() {
+        List<Route> routes = routeRepository.findAll();
+        double[] costs = routes.stream()
+                .mapToDouble(r -> r.getCost() != null ? r.getCost() : 0.0)
+                .toArray();
+        return calcularCostoTotalRecursivo(costs, 0);
+    }
+    
+    /**
+     * Obtiene todas las rutas desde Neo4j y calcula la distancia total recursivamente
+     */
+    public double obtenerRutasYCalcularDistanciaTotalRecursivo() {
+        List<Route> routes = routeRepository.findAll();
+        double[] distances = routes.stream()
+                .mapToDouble(r -> r.getDistance() != null ? r.getDistance() : 0.0)
+                .toArray();
+        return calcularDistanciaTotalRecursivo(distances, 0);
+    }
+    
+    /**
+     * Obtiene todas las rutas desde Neo4j y calcula métricas combinadas recursivamente
+     */
+    public RouteMetrics obtenerRutasYCalcularMetricasCombinadas() {
+        List<Route> routes = routeRepository.findAll();
+        double[] costs = routes.stream()
+                .mapToDouble(r -> r.getCost() != null ? r.getCost() : 0.0)
+                .toArray();
+        double[] distances = routes.stream()
+                .mapToDouble(r -> r.getDistance() != null ? r.getDistance() : 0.0)
+                .toArray();
+        return calcularMetricasCombinadas(costs, distances, 0);
+    }
+    
+    /**
+     * Obtiene el número de rutas en Neo4j
+     */
+    public int getNumeroRutas() {
+        return (int) routeRepository.count();
+    }
 
     /**
      * Calcula recursivamente el costo total de transporte
