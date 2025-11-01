@@ -420,15 +420,12 @@ CREATE (dc3)-[:HAS_TRUCK]->(t4);
 MATCH (dc4:DistributionCenter {id: 'DC004'}), (t5:Truck {id: 'T005'})
 CREATE (dc4)-[:HAS_TRUCK]->(t5);
 
--- Tucumán (1 camión)
 MATCH (dc5:DistributionCenter {id: 'DC005'}), (t8:Truck {id: 'T008'})
 CREATE (dc5)-[:HAS_TRUCK]->(t8);
 
--- Mar del Plata (1 camión)
 MATCH (dc6:DistributionCenter {id: 'DC006'}), (t9:Truck {id: 'T009'})
 CREATE (dc6)-[:HAS_TRUCK]->(t9);
 
--- La Plata (1 camión)
 MATCH (dc7:DistributionCenter {id: 'DC007'}), (t10:Truck {id: 'T010'})
 CREATE (dc7)-[:HAS_TRUCK]->(t10);
 
@@ -436,35 +433,28 @@ CREATE (dc7)-[:HAS_TRUCK]->(t10);
 MATCH (dc8:DistributionCenter {id: 'DC008'}), (t11:Truck {id: 'T011'})
 CREATE (dc8)-[:HAS_TRUCK]->(t11);
 
--- Corrientes (1 camión)
 MATCH (dc9:DistributionCenter {id: 'DC009'}), (t12:Truck {id: 'T012'})
 CREATE (dc9)-[:HAS_TRUCK]->(t12);
 
--- Neuquén (1 camión)
 MATCH (dc10:DistributionCenter {id: 'DC010'}), (t13:Truck {id: 'T013'})
 CREATE (dc10)-[:HAS_TRUCK]->(t13);
 
--- Bahía Blanca (1 camión)
+
 MATCH (dc11:DistributionCenter {id: 'DC011'}), (t14:Truck {id: 'T014'})
 CREATE (dc11)-[:HAS_TRUCK]->(t14);
 
--- San Juan (1 camión)
 MATCH (dc12:DistributionCenter {id: 'DC012'}), (t15:Truck {id: 'T015'})
 CREATE (dc12)-[:HAS_TRUCK]->(t15);
 
--- Santa Fe (1 camión)
 MATCH (dc13:DistributionCenter {id: 'DC013'}), (t16:Truck {id: 'T016'})
 CREATE (dc13)-[:HAS_TRUCK]->(t16);
 
--- Resistencia (1 camión)
 MATCH (dc14:DistributionCenter {id: 'DC014'}), (t17:Truck {id: 'T017'})
 CREATE (dc14)-[:HAS_TRUCK]->(t17);
 
--- Paraná (1 camión)
 MATCH (dc15:DistributionCenter {id: 'DC015'}), (t18:Truck {id: 'T018'})
 CREATE (dc15)-[:HAS_TRUCK]->(t18);
 
--- Distribuir los camiones restantes
 MATCH (dc1:DistributionCenter {id: 'DC001'}), (t19:Truck {id: 'T019'})
 CREATE (dc1)-[:HAS_TRUCK]->(t19);
 
@@ -480,7 +470,6 @@ MATCH (dc:DistributionCenter) RETURN count(dc) as centros;
 MATCH (r:Route) RETURN count(r) as rutas;
 MATCH (t:Truck) RETURN count(t) as camiones;
 
--- Mostrar algunos centros
 MATCH (dc:DistributionCenter) 
 RETURN dc.id, dc.name, dc.city, dc.demandLevel, dc.capacity 
 ORDER BY dc.demandLevel DESC 

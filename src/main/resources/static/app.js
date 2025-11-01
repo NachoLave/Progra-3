@@ -81,6 +81,222 @@ function mostrarModal(titulo, contenido) {
     document.getElementById('modal-body').innerHTML = contenido;
     document.getElementById('result-modal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    
+    // Iniciar visualizaciones automáticamente
+    setTimeout(() => {
+        iniciarVisualizaciones();
+    }, 300);
+}
+
+// Función para iniciar visualizaciones paso a paso automáticamente
+function iniciarVisualizaciones() {
+    // Buscar contenedores de visualización
+    const vizContainers = document.querySelectorAll('.modal-visualization-container[data-viz-data]');
+    
+    vizContainers.forEach(container => {
+        const vizData = JSON.parse(container.getAttribute('data-viz-data'));
+        const vizId = container.id;
+        
+        if (vizId.includes('recursion-viz')) {
+            // Visualización de recursión
+            iniciarVisualizacionRecursion(container, vizData);
+        } else if (vizId.includes('greedy-viz')) {
+            // Visualización Greedy
+            iniciarVisualizacionGreedy(container, vizData);
+        } else if (vizId.includes('graph-viz')) {
+            // Visualización de grafo
+            iniciarVisualizacionGrafo(container, vizData);
+        } else if (vizId.includes('dp-viz')) {
+            // Visualización DP
+            iniciarVisualizacionDP(container, vizData);
+        }
+    });
+}
+
+// Función para iniciar visualización de recursión
+function iniciarVisualizacionRecursion(container, data) {
+    const visualizer = new AlgorithmVisualizer();
+    visualizer.speed = 600;
+    const costs = data.costs;
+    
+    visualizer.steps = [];
+    visualizer.generateRecursionSteps(costs, 0, 0, '');
+    visualizer.currentStep = 0;
+    visualizer.isPlaying = true;
+    
+    visualizer.renderRecursionStep = function() {
+        if (this.currentStep >= this.steps.length) {
+            this.isPlaying = false;
+            return;
+        }
+        
+        const step = this.steps[this.currentStep];
+        const vizContainer = container.querySelector('.recursion-visualization');
+        if (!vizContainer) return;
+        
+        let html = `
+            <div class="step-indicator">
+                Paso ${this.currentStep + 1} de ${this.steps.length}
+            </div>
+            <div class="step-content">
+                <div class="step-message ${step.type}">
+                    <i class="fas ${step.type === 'base' ? 'fa-flag-checkered' : step.type === 'call' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+                    ${step.message}
+                </div>
+                <div class="step-details">
+                    <div class="detail-box">
+                        <span class="detail-label">Índice actual:</span>
+                        <span class="detail-value">${step.index}</span>
+                    </div>
+                    ${step.cost !== undefined ? `
+                    <div class="detail-box">
+                        <span class="detail-label">Costo del tramo:</span>
+                        <span class="detail-value highlight">${step.cost.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="detail-box">
+                        <span class="detail-label">Suma acumulada:</span>
+                        <span class="detail-value highlight">${step.sum.toFixed(2)}</span>
+                    </div>
+                    <div class="call-stack">
+                        <div class="stack-label">Pila de llamadas:</div>
+                        <div class="stack-items">${step.callStack || 'inicio'}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        vizContainer.innerHTML = html;
+        
+        if (this.isPlaying && this.currentStep < this.steps.length - 1) {
+            this.currentStep++;
+            setTimeout(() => this.renderRecursionStep(), this.speed);
+        }
+    };
+    
+    visualizer.renderRecursionStep();
+}
+
+// Función para iniciar visualización Greedy
+function iniciarVisualizacionGreedy(container, data) {
+    const required = data.requiredAmount;
+    const sizes = data.availableSizes || [];
+    const distribucion = data.distribucion || {};
+    
+    const visualizer = new AlgorithmVisualizer();
+    visualizer.speed = 800;
+    
+    let remaining = required;
+    let stepNum = 0;
+    const sortedSizes = [...sizes].sort((a, b) => b - a);
+    
+    function renderNextStep() {
+        if (stepNum >= sortedSizes.length || remaining <= 0) {
+            // Mostrar resultado final
+            const vizContainer = container.querySelector('.greedy-visualization');
+            if (!vizContainer) return;
+            
+            const totalUsed = Object.entries(distribucion).reduce((sum, [size, qty]) => sum + (parseInt(size) * qty), 0);
+            vizContainer.innerHTML = `
+                <div class="greedy-final">
+                    <div class="final-summary">
+                        <strong>✅ Distribución Completada:</strong><br>
+                        ${Object.entries(distribucion).map(([s, q]) => `${q}×${s}L`).join(' + ')} = ${totalUsed}L
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        const size = sortedSizes[stepNum];
+        const quantity = distribucion[size] || 0;
+        
+        if (quantity > 0) {
+            const used = size * quantity;
+            remaining -= used;
+            
+            const vizContainer = container.querySelector('.greedy-visualization');
+            if (!vizContainer) return;
+            
+            vizContainer.innerHTML = `
+                <div class="step-indicator">
+                    Paso ${stepNum + 1} de ${sortedSizes.length}
+                </div>
+                <div class="greedy-step">
+                    <div class="step-number">Paso ${stepNum + 1}</div>
+                    <div class="step-action">
+                        <i class="fas fa-check-circle"></i>
+                        Elegir bidón de <strong>${size}L</strong>
+                    </div>
+                    <div class="step-calculation">
+                        Usar ${quantity} bidón${quantity > 1 ? 'es' : ''} de ${size}L = ${used}L
+                    </div>
+                    <div class="step-result">
+                        Restante: ${remaining > 0 ? remaining + 'L' : '0L'}
+                    </div>
+                </div>
+            `;
+            
+            stepNum++;
+            setTimeout(() => renderNextStep(), visualizer.speed);
+        } else {
+            stepNum++;
+            renderNextStep();
+        }
+    }
+    
+    renderNextStep();
+}
+
+function iniciarVisualizacionGrafo(container, data) {
+    const edges = data.edges || [];
+    const algoritmo = data.algoritmo || 'Kruskal';
+    const svg = container.querySelector('.graph-svg');
+    if (!svg) return;
+    
+    const visualizer = new AlgorithmVisualizer();
+    
+    // Dibujar el grafo inicial
+    visualizer.drawGraph(edges, svg);
+    
+    // Si hay pasos, animarlos uno por uno
+    if (edges.length > 0 && algoritmo === 'Kruskal') {
+        let stepIndex = 0;
+        const speed = 1000;
+        
+        // Limpiar SVG primero
+        svg.innerHTML = '';
+        
+        function renderNextStep() {
+            if (stepIndex >= edges.length) {
+                // Mostrar grafo completo al final
+                visualizer.drawGraph(edges, svg);
+                return;
+            }
+            
+            // Mostrar aristas hasta el paso actual
+            const edgesToShow = edges.slice(0, stepIndex + 1);
+            svg.innerHTML = '';
+            visualizer.drawGraph(edgesToShow, svg);
+            
+            stepIndex++;
+            setTimeout(() => renderNextStep(), speed);
+        }
+        
+        renderNextStep();
+    } else {
+        // Mostrar grafo completo de una vez
+        visualizer.drawGraph(edges, svg);
+    }
+}
+
+function iniciarVisualizacionDP(container, data) {
+    // Implementar visualización de tabla DP paso a paso
+    const table = data.table || [];
+    const vizContainer = container.querySelector('.dp-visualization');
+    if (!vizContainer) return;
+    
+    const visualizer = new AlgorithmVisualizer();
+    visualizer.renderDPTable(table, vizContainer);
 }
 
 function cerrarModal() {
@@ -103,9 +319,16 @@ function formatRecursiveResultModal(data, elementId) {
     const valor = isCost ? data.costoTotal : data.distanciaTotal;
     const unidad = isCost ? 'unidades monetarias' : 'kilómetros';
     
-    // Simular pasos del algoritmo recursivo
+    // Generar datos simulados para la visualización
     const tramos = data.numeroTramos || 5;
     const valorPorTramo = valor / tramos;
+    const costs = [];
+    for (let i = 0; i < tramos; i++) {
+        costs.push(valorPorTramo);
+    }
+    
+    // ID único para esta visualización
+    const vizId = `recursion-viz-${Date.now()}`;
     
     let stepsHtml = '';
     let acumulado = 0;
@@ -128,7 +351,15 @@ function formatRecursiveResultModal(data, elementId) {
         `;
     }
     
+    // Guardar datos para la visualización en un atributo
+    const vizData = JSON.stringify({ costs, tipo, valor });
+    
     return `
+        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="recursion-visualization" style="min-height: 300px;"></div>
+        </div>
+        
         <div class="modal-result-section">
             <!-- Columna Izquierda: Resultado Principal -->
             <div class="modal-left-column">
@@ -876,6 +1107,13 @@ function formatFuelDistributionModal(data) {
     const distribucion = data.distribucion || {};
     const items = Object.entries(distribucion).sort((a, b) => parseInt(b[0]) - parseInt(a[0]));
     
+    // Preparar datos para visualización
+    const requiredAmount = data.cantidadRequerida || data.totalDistribuido;
+    const availableSizes = items.map(([size]) => parseInt(size));
+    
+    const vizId = `greedy-viz-${Date.now()}`;
+    const vizData = JSON.stringify({ requiredAmount, availableSizes, distribucion: Object.fromEntries(items) });
+    
     let stepsHtml = '';
     let totalAcumulado = 0;
     let pasoNum = 1;
@@ -903,6 +1141,11 @@ function formatFuelDistributionModal(data) {
     });
     
     return `
+        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="greedy-visualization" style="min-height: 300px;"></div>
+        </div>
+        
         <div class="modal-result-section">
             <!-- Columna Izquierda: Resultado Principal -->
             <div class="modal-left-column">
@@ -1031,6 +1274,10 @@ function formatBudgetDistributionModal(data) {
 function formatMSTResultModal(data, algoritmo) {
     const edges = data.mst || [];
     
+    // Preparar datos para visualización de grafo
+    const vizId = `graph-viz-${Date.now()}`;
+    const vizData = JSON.stringify({ edges, algoritmo });
+    
     let stepsHtml = '';
     let costoAcumulado = 0;
     
@@ -1055,6 +1302,13 @@ function formatMSTResultModal(data, algoritmo) {
     });
     
     return `
+        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="graph-visualization" style="min-height: 400px;">
+                <svg width="100%" height="400" class="graph-svg"></svg>
+            </div>
+        </div>
+        
         <div class="modal-result-section">
             <!-- Columna Izquierda: Resultado Principal -->
             <div class="modal-left-column">
@@ -1189,6 +1443,15 @@ function formatDijkstraResultModal(data) {
 function formatKnapsackResultModal(data) {
     const proyectos = data.proyectosSeleccionados || [];
     
+    // Preparar datos para visualización de tabla DP
+    const tablaDP = data.tablaDP || null;
+    const vizId = `dp-viz-${Date.now()}`;
+    const vizData = JSON.stringify({ 
+        tabla: tablaDP, 
+        presupuesto: data.presupuestoInicial || 0,
+        proyectos: proyectos.length 
+    });
+    
     let stepsHtml = '';
     let costoAcumulado = 0;
     let beneficioAcumulado = 0;
@@ -1215,6 +1478,15 @@ function formatKnapsackResultModal(data) {
     });
     
     return `
+        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        ${tablaDP ? `
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="dp-visualization" style="min-height: 400px;">
+                <div class="dp-table-container"></div>
+            </div>
+        </div>
+        ` : ''}
+        
         <div class="modal-result-section">
             <!-- Columna Izquierda: Resultado Principal -->
             <div class="modal-left-column">
@@ -1795,11 +2067,6 @@ async function calcularKruskal() {
         
         const data = await response.json();
         showResult('kruskal-result', data, true);
-        
-        // Mostrar visualización del grafo
-        setTimeout(() => {
-            verVisualizacionGrafo('kruskal');
-        }, 500);
     } catch (error) {
         showResult('kruskal-result', { error: 'Error al calcular MST: ' + error.message });
     } finally {
@@ -1844,11 +2111,6 @@ async function calcularDijkstra() {
         
         const data = await response.json();
         showResult('dijkstra-result', data, true);
-        
-        // Mostrar visualización
-        setTimeout(() => {
-            verVisualizacionGrafoDijkstra();
-        }, 500);
     } catch (error) {
         showResult('dijkstra-result', { error: 'Error al calcular Dijkstra: ' + error.message });
     } finally {

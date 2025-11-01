@@ -64,16 +64,10 @@
                             <label>Costos por tramo (separados por comas):</label>
                             <input type="text" id="costs-input" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
                         </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="calcularCostoTotal()">
-                                <i class="fas fa-calculator"></i> Calcular
-                            </button>
-                            <button class="btn btn-secondary" onclick="verVisualizacionRecursion('cost')">
-                                <i class="fas fa-eye"></i> Ver Paso a Paso
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="calcularCostoTotal()">
+                            <i class="fas fa-calculator"></i> Calcular
+                        </button>
                         <div id="cost-result" class="result-box"></div>
-                        <div id="cost-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -186,16 +180,10 @@
                             <label>Tamaños de bidones (separados por comas):</label>
                             <input type="text" id="fuel-sizes" placeholder="50, 20, 10, 5, 2" value="50, 20, 10, 5, 2">
                         </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="distribuirCombustible()">
-                                <i class="fas fa-gas-pump"></i> Distribuir
-                            </button>
-                            <button class="btn btn-secondary" onclick="verVisualizacionGreedy()">
-                                <i class="fas fa-eye"></i> Ver Proceso
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="distribuirCombustible()">
+                            <i class="fas fa-gas-pump"></i> Distribuir
+                        </button>
                         <div id="fuel-result" class="result-box"></div>
-                        <div id="fuel-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -257,16 +245,10 @@
                                 <div id="rutas-agregadas" class="rutas-list"></div>
                             </div>
                         </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="calcularKruskal()">
-                                <i class="fas fa-sitemap"></i> Calcular MST
-                            </button>
-                            <button class="btn btn-secondary" onclick="verVisualizacionGrafo('kruskal')">
-                                <i class="fas fa-eye"></i> Ver Grafo Visual
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="calcularKruskal()">
+                            <i class="fas fa-sitemap"></i> Calcular MST
+                        </button>
                         <div id="kruskal-result" class="result-box"></div>
-                        <div id="kruskal-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">
@@ -294,16 +276,10 @@
                                 <div id="dijkstra-rutas-agregadas" class="rutas-list"></div>
                             </div>
                         </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="calcularDijkstra()">
-                                <i class="fas fa-route"></i> Calcular
-                            </button>
-                            <button class="btn btn-secondary" onclick="verVisualizacionGrafo('dijkstra')">
-                                <i class="fas fa-eye"></i> Ver Grafo Visual
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="calcularDijkstra()">
+                            <i class="fas fa-route"></i> Calcular
+                        </button>
                         <div id="dijkstra-result" class="result-box"></div>
-                        <div id="dijkstra-viz" class="result-box"></div>
                     </div>
                 </div>
             </div>
@@ -336,16 +312,10 @@
                                 <div id="knapsack-proyectos-agregados" class="proyectos-list"></div>
                             </div>
                         </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="resolverMochila()">
-                                <i class="fas fa-calculator"></i> Resolver
-                            </button>
-                            <button class="btn btn-secondary" onclick="verTablaDP()">
-                                <i class="fas fa-table"></i> Ver Tabla DP
-                            </button>
-                        </div>
+                        <button class="btn btn-primary" onclick="resolverMochila()">
+                            <i class="fas fa-calculator"></i> Resolver
+                        </button>
                         <div id="knapsack-result" class="result-box"></div>
-                        <div id="knapsack-viz" class="result-box"></div>
                     </div>
 
                     <div class="card">

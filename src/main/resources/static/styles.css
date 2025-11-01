@@ -2070,6 +2070,26 @@ body {
     font-weight: 600;
 }
 
+/* Contenedor de visualización paso a paso (full width, arriba) */
+.modal-visualization-container {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    background: var(--dark-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+}
+
+.modal-visualization-container .recursion-visualization,
+.modal-visualization-container .greedy-visualization,
+.modal-visualization-container .graph-visualization,
+.modal-visualization-container .dp-visualization {
+    width: 100%;
+}
+
 .modal-explanation {
     background: var(--card-bg);
     padding: 2.5rem;
