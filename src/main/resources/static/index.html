@@ -49,6 +49,7 @@
         </nav>
 
         <!-- Main Content -->
+        <div class="content-wrapper">
         <main class="main-content">
             <!-- Módulo 1: Recursividad -->
             <div class="module-content active" id="module-recursive">
@@ -341,6 +342,23 @@
                 </div>
             </div>
         </main>
+
+        <!-- Panel Lateral Derecho - Datos Neo4j -->
+        <aside class="neo4j-sidebar" id="neo4j-sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-database"></i> Datos Neo4j</h3>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar/Expandir">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="sidebar-content" id="neo4j-content">
+                <div class="sidebar-loading">
+                    <div class="spinner-small"></div>
+                    <p>Cargando datos...</p>
+                </div>
+            </div>
+        </aside>
+        </div>
 
         <!-- Footer -->
         <footer class="footer">

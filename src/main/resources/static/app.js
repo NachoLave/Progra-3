@@ -290,13 +290,54 @@ function iniciarVisualizacionGrafo(container, data) {
 }
 
 function iniciarVisualizacionDP(container, data) {
-    // Implementar visualización de tabla DP paso a paso
-    const table = data.table || [];
-    const vizContainer = container.querySelector('.dp-visualization');
-    if (!vizContainer) return;
+    const table = data.tabla || [];
+    const presupuesto = data.presupuesto || 0;
+    const tableContainer = container.querySelector('.dp-table-container');
+    if (!tableContainer || !table || table.length === 0) return;
     
     const visualizer = new AlgorithmVisualizer();
-    visualizer.renderDPTable(table, vizContainer);
+    visualizer.speed = 500;
+    
+    // Mostrar tabla completa directamente (es más útil verla toda)
+    visualizer.renderDPTable(table, tableContainer);
+    
+    // Opcional: animar fila por fila si la tabla es pequeña
+    if (table.length <= 10 && presupuesto <= 20) {
+        let rowIndex = 0;
+        const maxRows = table.length;
+        
+        function renderNextRow() {
+            if (rowIndex >= maxRows) {
+                return; // Ya terminamos
+            }
+            
+            // Renderizar hasta la fila actual
+            const partialTable = table.slice(0, rowIndex + 1);
+            tableContainer.innerHTML = '';
+            visualizer.renderDPTable(partialTable, tableContainer);
+            
+            // Agregar indicador de fila actual
+            const currentTable = tableContainer.querySelector('.dp-table');
+            if (currentTable && rowIndex < maxRows - 1) {
+                const rows = currentTable.querySelectorAll('tbody tr');
+                if (rows[rowIndex]) {
+                    rows[rowIndex].style.backgroundColor = 'rgba(37, 99, 235, 0.3)';
+                    rows[rowIndex].style.transition = 'background-color 0.3s';
+                }
+            }
+            
+            rowIndex++;
+            if (rowIndex < maxRows) {
+                setTimeout(() => renderNextRow(), visualizer.speed);
+            }
+        }
+        
+        // Iniciar animación después de un pequeño delay
+        setTimeout(() => {
+            tableContainer.innerHTML = '';
+            renderNextRow();
+        }, 500);
+    }
 }
 
 function cerrarModal() {
@@ -1549,6 +1590,28 @@ function formatKnapsackComparisonModal(data) {
     const dp = data.programacionDinamica || {};
     const greedy = data.greedy || {};
     const diferencia = data.diferenciaBeneficio || 0;
+    const mejor = diferencia > 0 ? 'DP' : diferencia < 0 ? 'Greedy' : 'Empate';
+    
+    // Preparar datos para visualización comparativa
+    const beneficioDP = dp.beneficioTotal || 0;
+    const beneficioGreedy = greedy.beneficioTotal || 0;
+    const maxBeneficio = Math.max(beneficioDP, beneficioGreedy, 1);
+    const porcentajeDP = (beneficioDP / maxBeneficio) * 100;
+    const porcentajeGreedy = (beneficioGreedy / maxBeneficio) * 100;
+    
+    const proyectosDP = dp.proyectosSeleccionados || [];
+    const proyectosGreedy = greedy.proyectosSeleccionados || [];
+    
+    const vizId = `comparison-viz-${Date.now()}`;
+    const vizData = JSON.stringify({ 
+        beneficioDP, 
+        beneficioGreedy, 
+        porcentajeDP, 
+        porcentajeGreedy,
+        proyectosDP,
+        proyectosGreedy,
+        diferencia
+    });
     
     return `
         <div class="modal-result-section">
@@ -1556,28 +1619,89 @@ function formatKnapsackComparisonModal(data) {
                 <div class="modal-stat-card" style="border-color: var(--primary-color); background: rgba(37, 99, 235, 0.15);">
                     <div class="modal-stat-icon"><i class="fas fa-chart-line"></i></div>
                     <div class="modal-stat-label">Programación Dinámica</div>
-                    <div class="modal-stat-value">$${dp.beneficioTotal || 0}</div>
+                    <div class="modal-stat-value">$${beneficioDP}</div>
                     <div style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
                         Costo: $${dp.costoTotal || 0}<br>
-                        Proyectos: ${dp.proyectosSeleccionados?.length || 0}
+                        Proyectos: ${proyectosDP.length}
                     </div>
                 </div>
                 <div class="modal-stat-card">
                     <div class="modal-stat-icon"><i class="fas fa-fire"></i></div>
                     <div class="modal-stat-label">Greedy</div>
-                    <div class="modal-stat-value">$${greedy.beneficioTotal || 0}</div>
+                    <div class="modal-stat-value">$${beneficioGreedy}</div>
                     <div style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
                         Costo: $${greedy.costoTotal || 0}<br>
-                        Proyectos: ${greedy.proyectosSeleccionados?.length || 0}
+                        Proyectos: ${proyectosGreedy.length}
                     </div>
                 </div>
             </div>
-            <div class="modal-stat-card" style="margin-top: 2rem; border-color: var(--success-color); background: rgba(16, 185, 129, 0.15);">
+            <div class="modal-stat-card" style="margin-top: 2rem; border-color: ${mejor === 'DP' ? 'var(--success-color)' : mejor === 'Greedy' ? 'var(--warning-color)' : 'var(--text-secondary)'}; background: ${mejor === 'DP' ? 'rgba(16, 185, 129, 0.15)' : mejor === 'Greedy' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.15)'};">
                 <div class="modal-stat-icon"><i class="fas fa-trophy"></i></div>
                 <div class="modal-stat-label">Mejor Estrategia</div>
-                <div class="modal-stat-value">${data.mejorEstrategia}</div>
+                <div class="modal-stat-value">${data.mejorEstrategia || mejor === 'DP' ? 'Programación Dinámica' : mejor === 'Greedy' ? 'Greedy' : 'Empate'}</div>
                 <div style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    Diferencia: $${diferencia}
+                    Diferencia: $${Math.abs(diferencia)}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Visualización Comparativa (Full Width, Arriba de la Explicación) -->
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="comparison-visualization">
+                <!-- Gráfico de barras comparativo -->
+                <div class="comparison-chart">
+                    <div class="chart-title">Comparación de Beneficios</div>
+                    <div class="bars-container">
+                        <div class="bar-group">
+                            <div class="bar-label">DP</div>
+                            <div class="bar-wrapper">
+                                <div class="bar bar-dp" style="width: ${porcentajeDP}%;">
+                                    <span class="bar-value">$${beneficioDP}</span>
+                                </div>
+                            </div>
+                            <div class="bar-percentage">${porcentajeDP.toFixed(1)}%</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-label">Greedy</div>
+                            <div class="bar-wrapper">
+                                <div class="bar bar-greedy" style="width: ${porcentajeGreedy}%;">
+                                    <span class="bar-value">$${beneficioGreedy}</span>
+                                </div>
+                            </div>
+                            <div class="bar-percentage">${porcentajeGreedy.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Proyectos seleccionados por cada algoritmo -->
+                <div class="projects-comparison">
+                    <div class="projects-side">
+                        <div class="projects-header dp-header">
+                            <i class="fas fa-chart-line"></i> Proyectos Seleccionados por DP
+                        </div>
+                        <div class="projects-list">
+                            ${proyectosDP.length > 0 ? proyectosDP.map(p => `
+                                <div class="project-chip chip-dp">
+                                    <i class="fas fa-check-circle"></i> ${p}
+                                </div>
+                            `).join('') : '<div class="no-projects">Ninguno</div>'}
+                        </div>
+                    </div>
+                    <div class="vs-divider">
+                        <div class="vs-circle">VS</div>
+                    </div>
+                    <div class="projects-side">
+                        <div class="projects-header greedy-header">
+                            <i class="fas fa-fire"></i> Proyectos Seleccionados por Greedy
+                        </div>
+                        <div class="projects-list">
+                            ${proyectosGreedy.length > 0 ? proyectosGreedy.map(p => `
+                                <div class="project-chip chip-greedy">
+                                    <i class="fas fa-check-circle"></i> ${p}
+                                </div>
+                            `).join('') : '<div class="no-projects">Ninguno</div>'}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2267,13 +2391,28 @@ async function resolverMochila() {
             optimized: false
         };
         
-        const response = await fetch(`${API_BASE}/dynamic-programming/mochila`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request)
-        });
+        // Obtener solución y tabla DP en paralelo
+        const [solutionResponse, tableResponse] = await Promise.all([
+            fetch(`${API_BASE}/dynamic-programming/mochila`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            }),
+            fetch(`${API_BASE}/dynamic-programming/mochila/tabla-dp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            }).catch(() => null) // Si falla, continuar sin tabla
+        ]);
         
-        const data = await response.json();
+        const data = await solutionResponse.json();
+        
+        // Agregar tabla DP si está disponible
+        if (tableResponse && tableResponse.ok) {
+            const tableData = await tableResponse.json();
+            data.tablaDP = tableData.tablaDP;
+        }
+        
         showResult('knapsack-result', data, true);
     } catch (error) {
         showResult('knapsack-result', { error: 'Error al resolver mochila: ' + error.message });
@@ -2316,4 +2455,293 @@ async function compararMochilaGreedy() {
         hideLoading();
     }
 }
+
+// ============================================
+// Panel Lateral Neo4j - Cargar y Mostrar Datos
+// ============================================
+
+async function loadNeo4jData() {
+    const contentDiv = document.getElementById('neo4j-content');
+    if (!contentDiv) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/neo4j/data`);
+        
+        if (!response.ok) {
+            // Si el endpoint no existe (404), mostrar mensaje más claro
+            if (response.status === 404) {
+                contentDiv.innerHTML = `
+                    <div class="sidebar-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p style="margin-bottom: 0.5rem;"><strong>Endpoint no encontrado</strong></p>
+                        <p style="font-size: 0.85rem;">El endpoint /api/neo4j/data no está disponible.</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">Por favor, reinicia la aplicación Spring Boot.</p>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Status: ${response.status}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const errorText = await response.text();
+            contentDiv.innerHTML = `
+                <div class="sidebar-empty">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Error HTTP ${response.status}: ${errorText || response.statusText}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            let errorMessage = data.error;
+            let helpText = '';
+            
+            // Si el backend envió sugerencias, usarlas
+            if (data.suggestions && Array.isArray(data.suggestions)) {
+                helpText = `
+                    <div style="font-size: 0.85rem; margin-top: 0.5rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning-color); border-radius: 4px;">
+                        <p style="margin-bottom: 0.5rem;"><strong>Sugerencias:</strong></p>
+                        <ul style="margin-left: 1.25rem; margin-top: 0.25rem; line-height: 1.6;">
+                            ${data.suggestions.map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else if (errorMessage.includes('No routing server available') || errorMessage.includes('Could not perform discovery')) {
+                // Mensaje genérico si no hay sugerencias específicas
+                helpText = `
+                    <div style="font-size: 0.85rem; margin-top: 0.5rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning-color); border-radius: 4px;">
+                        <p style="margin-bottom: 0.5rem;"><strong>Problema de conexión con Neo4j Aura</strong></p>
+                        <p style="margin-bottom: 0.25rem;">Posibles soluciones:</p>
+                        <ul style="margin-left: 1.25rem; margin-top: 0.25rem; line-height: 1.6;">
+                            <li>Verifica que la instancia esté en estado "Running" (no pausada)</li>
+                            <li>Espera 1-2 minutos después de reactivar la instancia</li>
+                            <li>Reinicia la aplicación Spring Boot</li>
+                            <li>Verifica la URI en application.properties: <code style="background: var(--dark-bg); padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.8rem;">neo4j+s://9b399f10.databases.neo4j.io</code></li>
+                        </ul>
+                    </div>
+                `;
+            } else if (errorMessage.includes('No hay datos')) {
+                helpText = '<p style="font-size: 0.85rem; margin-top: 0.5rem;">Usa el endpoint /api/data-init/load para cargar datos de prueba.</p>';
+            }
+            
+            contentDiv.innerHTML = `
+                <div class="sidebar-empty">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p style="margin-bottom: 0.5rem;"><strong>Error al obtener datos</strong></p>
+                    <p style="font-size: 0.85rem;">${errorMessage}</p>
+                    ${data.errorDetails ? `<p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Tipo: ${data.errorDetails}</p>` : ''}
+                    ${helpText}
+                </div>
+            `;
+            return;
+        }
+        
+        // Si hay un mensaje informativo (como que no hay datos)
+        if (data.message) {
+            const hasData = (data.summary?.totalCentros || 0) > 0 || 
+                           (data.summary?.totalRutas || 0) > 0 || 
+                           (data.summary?.totalCamiones || 0) > 0;
+            
+            if (!hasData) {
+                contentDiv.innerHTML = `
+                    <div class="sidebar-empty">
+                        <i class="fas fa-info-circle"></i>
+                        <p style="margin-bottom: 0.5rem;"><strong>No hay datos</strong></p>
+                        <p style="font-size: 0.85rem;">${data.message}</p>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            Carga datos usando: <code style="background: var(--dark-bg); padding: 0.25rem 0.5rem; border-radius: 4px;">POST /api/data-init/load</code>
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+        }
+        
+        renderNeo4jData(data);
+    } catch (error) {
+        contentDiv.innerHTML = `
+            <div class="sidebar-empty">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p style="margin-bottom: 0.5rem;"><strong>Error de conexión</strong></p>
+                <p style="font-size: 0.85rem;">${error.message}</p>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Verifica que la aplicación Spring Boot esté ejecutándose en el puerto 8080</p>
+            </div>
+        `;
+        console.error('Error cargando datos Neo4j:', error);
+    }
+}
+
+function renderNeo4jData(data) {
+    const contentDiv = document.getElementById('neo4j-content');
+    if (!contentDiv) return;
+    
+    const summary = data.summary || {};
+    const centros = data.centros || [];
+    const rutas = data.rutas || [];
+    const camiones = data.camiones || [];
+    
+    let html = '';
+    
+    // Resumen
+    html += `
+        <div class="sidebar-section">
+            <div class="sidebar-summary">
+                <div class="sidebar-summary-card">
+                    <div class="sidebar-summary-value">${summary.totalCentros || 0}</div>
+                    <div class="sidebar-summary-label">Centros</div>
+                </div>
+                <div class="sidebar-summary-card">
+                    <div class="sidebar-summary-value">${summary.totalRutas || 0}</div>
+                    <div class="sidebar-summary-label">Rutas</div>
+                </div>
+                <div class="sidebar-summary-card">
+                    <div class="sidebar-summary-value">${summary.totalCamiones || 0}</div>
+                    <div class="sidebar-summary-label">Camiones</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Centros de Distribución
+    html += `
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <i class="fas fa-warehouse"></i> Centros de Distribución
+            </div>
+            <div class="sidebar-list">
+    `;
+    
+    if (centros.length === 0) {
+        html += '<div class="sidebar-empty">No hay centros cargados</div>';
+    } else {
+        centros.slice(0, 10).forEach(centro => {
+            html += `
+                <div class="sidebar-item">
+                    <div class="sidebar-item-title">${centro.name || centro.id}</div>
+                    <div class="sidebar-item-detail">
+                        <span>Ciudad:</span>
+                        <strong>${centro.city || 'N/A'}</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Demanda:</span>
+                        <strong>${centro.demandLevel || 0}</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Capacidad:</span>
+                        <strong>${centro.capacity || 0}</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Prioridad:</span>
+                        <strong>${centro.priority || 0}</strong>
+                    </div>
+                </div>
+            `;
+        });
+        if (centros.length > 10) {
+            html += `<div class="sidebar-item" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">+ ${centros.length - 10} más</div>`;
+        }
+    }
+    
+    html += `</div></div>`;
+    
+    // Rutas
+    html += `
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <i class="fas fa-route"></i> Rutas
+            </div>
+            <div class="sidebar-list">
+    `;
+    
+    if (rutas.length === 0) {
+        html += '<div class="sidebar-empty">No hay rutas cargadas</div>';
+    } else {
+        rutas.slice(0, 8).forEach(ruta => {
+            html += `
+                <div class="sidebar-item">
+                    <div class="sidebar-item-title">${ruta.name || ruta.id}</div>
+                    <div class="sidebar-item-detail">
+                        <span>Desde:</span>
+                        <strong>${ruta.fromCenter || 'N/A'}</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Hasta:</span>
+                        <strong>${ruta.toCenter || 'N/A'}</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Distancia:</span>
+                        <strong>${(ruta.distance || 0).toFixed(1)} km</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Costo:</span>
+                        <strong>$${ruta.cost || 0}</strong>
+                    </div>
+                </div>
+            `;
+        });
+        if (rutas.length > 8) {
+            html += `<div class="sidebar-item" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">+ ${rutas.length - 8} más</div>`;
+        }
+    }
+    
+    html += `</div></div>`;
+    
+    // Camiones
+    html += `
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <i class="fas fa-truck"></i> Camiones
+            </div>
+            <div class="sidebar-list">
+    `;
+    
+    if (camiones.length === 0) {
+        html += '<div class="sidebar-empty">No hay camiones cargados</div>';
+    } else {
+        camiones.slice(0, 8).forEach(camion => {
+            const fuelPercentage = camion.fuelCapacity > 0 ? 
+                ((camion.currentFuel / camion.fuelCapacity) * 100).toFixed(0) : 0;
+            html += `
+                <div class="sidebar-item">
+                    <div class="sidebar-item-title">${camion.licensePlate || camion.id}</div>
+                    <div class="sidebar-item-detail">
+                        <span>Capacidad:</span>
+                        <strong>${camion.capacity || 0} kg</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Combustible:</span>
+                        <strong>${camion.currentFuel || 0}/${camion.fuelCapacity || 0}L (${fuelPercentage}%)</strong>
+                    </div>
+                    <div class="sidebar-item-detail">
+                        <span>Estado:</span>
+                        <strong style="color: ${camion.status === 'AVAILABLE' ? 'var(--success-color)' : camion.status === 'IN_TRANSIT' ? 'var(--warning-color)' : 'var(--text-secondary)'};">${camion.status || 'N/A'}</strong>
+                    </div>
+                </div>
+            `;
+        });
+        if (camiones.length > 8) {
+            html += `<div class="sidebar-item" style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">+ ${camiones.length - 8} más</div>`;
+        }
+    }
+    
+    html += `</div></div>`;
+    
+    contentDiv.innerHTML = html;
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('neo4j-sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
+    }
+}
+
+// Cargar datos al iniciar
+window.addEventListener('DOMContentLoaded', () => {
+    loadNeo4jData();
+    // Recargar cada 30 segundos para mantener datos actualizados
+    setInterval(loadNeo4jData, 30000);
+});
 
