@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Servicio para cálculos recursivos de métricas operativas básicas
@@ -26,36 +27,44 @@ public class RecursiveMetricsService {
      * Obtiene todas las rutas desde Neo4j y calcula el costo total recursivamente
      */
     public double obtenerRutasYCalcularCostoTotalRecursivo() {
-        List<Route> routes = routeRepository.findAll();
-        double[] costs = routes.stream()
-                .mapToDouble(r -> r.getCost() != null ? r.getCost() : 0.0)
-                .toArray();
+        double[] costs = obtenerDatosRutasDesdeNeo4j().getCosts();
         return calcularCostoTotalRecursivo(costs, 0);
     }
-    
+
     /**
      * Obtiene todas las rutas desde Neo4j y calcula la distancia total recursivamente
      */
     public double obtenerRutasYCalcularDistanciaTotalRecursivo() {
-        List<Route> routes = routeRepository.findAll();
-        double[] distances = routes.stream()
-                .mapToDouble(r -> r.getDistance() != null ? r.getDistance() : 0.0)
-                .toArray();
+        double[] distances = obtenerDatosRutasDesdeNeo4j().getDistances();
         return calcularDistanciaTotalRecursivo(distances, 0);
     }
-    
+
     /**
      * Obtiene todas las rutas desde Neo4j y calcula métricas combinadas recursivamente
      */
     public RouteMetrics obtenerRutasYCalcularMetricasCombinadas() {
+        RouteData routeData = obtenerDatosRutasDesdeNeo4j();
+        return calcularMetricasCombinadas(routeData.getCosts(), routeData.getDistances(), 0);
+    }
+
+    /**
+     * Devuelve los arreglos de costos y distancias recuperados desde Neo4j.
+     */
+    public RouteData obtenerDatosRutasDesdeNeo4j() {
         List<Route> routes = routeRepository.findAll();
         double[] costs = routes.stream()
-                .mapToDouble(r -> r.getCost() != null ? r.getCost() : 0.0)
+                .mapToDouble(r -> {
+                    Double cost = r.getCost();
+                    return cost != null ? cost : 0.0;
+                })
                 .toArray();
         double[] distances = routes.stream()
-                .mapToDouble(r -> r.getDistance() != null ? r.getDistance() : 0.0)
+                .mapToDouble(r -> {
+                    Double distance = r.getDistance();
+                    return distance != null ? distance : 0.0;
+                })
                 .toArray();
-        return calcularMetricasCombinadas(costs, distances, 0);
+        return new RouteData(costs, distances);
     }
     
     /**
@@ -158,6 +167,27 @@ public class RecursiveMetricsService {
         public double getCostoTotal() { return costoTotal; }
         public double getDistanciaTotal() { return distanciaTotal; }
         public double getCostoPorKm() { return costoPorKm; }
+    }
+
+    /**
+     * Contenedor con los arreglos originales de costos y distancias.
+     */
+    public static class RouteData {
+        private final double[] costs;
+        private final double[] distances;
+
+        public RouteData(double[] costs, double[] distances) {
+            this.costs = Objects.requireNonNull(costs);
+            this.distances = Objects.requireNonNull(distances);
+        }
+
+        public double[] getCosts() {
+            return costs;
+        }
+
+        public double[] getDistances() {
+            return distances;
+        }
     }
 }
 
