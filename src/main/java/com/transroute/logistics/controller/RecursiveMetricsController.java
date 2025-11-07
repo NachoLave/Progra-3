@@ -4,6 +4,7 @@ import com.transroute.logistics.dto.CostCalculationRequest;
 import com.transroute.logistics.dto.DistanceCalculationRequest;
 import com.transroute.logistics.dto.CombinedMetricsRequest;
 import com.transroute.logistics.service.RecursiveMetricsService;
+import com.transroute.logistics.service.RecursiveMetricsService.RouteData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,8 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Controlador REST para el módulo de Complejidad y Recursividad
@@ -52,30 +57,37 @@ public class RecursiveMetricsController {
         double costoTotal;
         int numeroTramos;
         
+        double[] costs;
+        String fuente;
+
         if (request != null && request.getCosts() != null && !request.getCosts().isEmpty()) {
-            // Usar datos del request
-            double[] costs = request.getCosts().stream()
+            costs = request.getCosts().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            costoTotal = recursiveMetricsService.calcularCostoTotalRecursivo(costs, 0);
-            numeroTramos = costs.length;
+            fuente = "request";
         } else {
-            // Obtener desde Neo4j
-            costoTotal = recursiveMetricsService.obtenerRutasYCalcularCostoTotalRecursivo();
-            numeroTramos = recursiveMetricsService.getNumeroRutas();
+            RouteData routeData = recursiveMetricsService.obtenerDatosRutasDesdeNeo4j();
+            costs = routeData.getCosts();
+            fuente = "neo4j";
         }
-        
+
+        costoTotal = recursiveMetricsService.calcularCostoTotalRecursivo(costs, 0);
+        numeroTramos = costs.length;
+
         long endTime = System.nanoTime();
         long executionTime = endTime - startTime;
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("costoTotal", costoTotal);
         response.put("metodo", "recursivo");
         response.put("complejidad", "O(n)");
         response.put("tiempoEjecucionNanosegundos", executionTime);
         response.put("numeroTramos", numeroTramos);
-        response.put("fuente", request != null && request.getCosts() != null && !request.getCosts().isEmpty() ? "request" : "neo4j");
-        
+        response.put("fuente", fuente);
+        response.put("valoresOriginales", Arrays.stream(costs).boxed().collect(Collectors.toList()));
+        response.put("acumulados", Arrays.stream(calcularAcumulados(costs)).boxed().collect(Collectors.toList()));
+        response.put("pasosRecursion", construirPasos(costs));
+
         return ResponseEntity.ok(response);
     }
 
@@ -104,28 +116,37 @@ public class RecursiveMetricsController {
         double distanciaTotal;
         int numeroTramos;
         
+        double[] distances;
+        String fuente;
+
         if (request != null && request.getDistances() != null && !request.getDistances().isEmpty()) {
-            double[] distances = request.getDistances().stream()
+            distances = request.getDistances().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            distanciaTotal = recursiveMetricsService.calcularDistanciaTotalRecursivo(distances, 0);
-            numeroTramos = distances.length;
+            fuente = "request";
         } else {
-            distanciaTotal = recursiveMetricsService.obtenerRutasYCalcularDistanciaTotalRecursivo();
-            numeroTramos = recursiveMetricsService.getNumeroRutas();
+            RouteData routeData = recursiveMetricsService.obtenerDatosRutasDesdeNeo4j();
+            distances = routeData.getDistances();
+            fuente = "neo4j";
         }
-        
+
+        distanciaTotal = recursiveMetricsService.calcularDistanciaTotalRecursivo(distances, 0);
+        numeroTramos = distances.length;
+
         long endTime = System.nanoTime();
         long executionTime = endTime - startTime;
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("distanciaTotal", distanciaTotal);
         response.put("metodo", "recursivo");
         response.put("complejidad", "O(n)");
         response.put("tiempoEjecucionNanosegundos", executionTime);
         response.put("numeroTramos", numeroTramos);
-        response.put("fuente", request != null && request.getDistances() != null && !request.getDistances().isEmpty() ? "request" : "neo4j");
-        
+        response.put("fuente", fuente);
+        response.put("valoresOriginales", Arrays.stream(distances).boxed().collect(Collectors.toList()));
+        response.put("acumulados", Arrays.stream(calcularAcumulados(distances)).boxed().collect(Collectors.toList()));
+        response.put("pasosRecursion", construirPasos(distances));
+
         return ResponseEntity.ok(response);
     }
 
@@ -217,27 +238,39 @@ public class RecursiveMetricsController {
         RecursiveMetricsService.RouteMetrics metrics;
         String fuente;
         
+        double[] costs;
+        double[] distances;
+
         if (request != null && request.getCosts() != null && !request.getCosts().isEmpty()) {
-            double[] costs = request.getCosts().stream()
+            if (request.getDistances() == null || request.getDistances().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Debe proporcionar distancias para calcular las métricas combinadas");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            costs = request.getCosts().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            double[] distances = request.getDistances().stream()
+            distances = request.getDistances().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            
+
             if (costs.length != distances.length) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Los arrays de costos y distancias deben tener la misma longitud");
                 return ResponseEntity.badRequest().body(error);
             }
-            
+
             metrics = recursiveMetricsService.calcularMetricasCombinadas(costs, distances, 0);
             fuente = "request";
         } else {
-            metrics = recursiveMetricsService.obtenerRutasYCalcularMetricasCombinadas();
+            RouteData routeData = recursiveMetricsService.obtenerDatosRutasDesdeNeo4j();
+            costs = routeData.getCosts();
+            distances = routeData.getDistances();
+            metrics = recursiveMetricsService.calcularMetricasCombinadas(costs, distances, 0);
             fuente = "neo4j";
         }
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("costoTotal", metrics.getCostoTotal());
         response.put("distanciaTotal", metrics.getDistanciaTotal());
@@ -245,7 +278,56 @@ public class RecursiveMetricsController {
         response.put("metodo", "recursivo");
         response.put("complejidad", "O(n)");
         response.put("fuente", fuente);
-        
+        response.put("numeroTramos", costs.length);
+        response.put("costosOriginales", Arrays.stream(costs).boxed().collect(Collectors.toList()));
+        response.put("distanciasOriginales", Arrays.stream(distances).boxed().collect(Collectors.toList()));
+        response.put("acumuladosCostos", Arrays.stream(calcularAcumulados(costs)).boxed().collect(Collectors.toList()));
+        response.put("acumuladosDistancias", Arrays.stream(calcularAcumulados(distances)).boxed().collect(Collectors.toList()));
+        response.put("pasosCombinados", construirPasosCombinados(costs, distances));
+
         return ResponseEntity.ok(response);
+    }
+
+    private double[] calcularAcumulados(double[] valores) {
+        double[] acumulados = new double[valores.length];
+        double suma = 0;
+        for (int i = 0; i < valores.length; i++) {
+            suma += valores[i];
+            acumulados[i] = suma;
+        }
+        return acumulados;
+    }
+
+    private List<Map<String, Object>> construirPasos(double[] valores) {
+        List<Map<String, Object>> pasos = new ArrayList<>();
+        double acumulado = 0;
+        for (int i = 0; i < valores.length; i++) {
+            acumulado += valores[i];
+            Map<String, Object> paso = new HashMap<>();
+            paso.put("indice", i);
+            paso.put("valor", valores[i]);
+            paso.put("acumulado", acumulado);
+            pasos.add(paso);
+        }
+        return pasos;
+    }
+
+    private List<Map<String, Object>> construirPasosCombinados(double[] costs, double[] distances) {
+        List<Map<String, Object>> pasos = new ArrayList<>();
+        double acumuladoCosto = 0;
+        double acumuladoDistancia = 0;
+        for (int i = 0; i < costs.length && i < distances.length; i++) {
+            acumuladoCosto += costs[i];
+            acumuladoDistancia += distances[i];
+            Map<String, Object> paso = new HashMap<>();
+            paso.put("indice", i);
+            paso.put("costo", costs[i]);
+            paso.put("distancia", distances[i]);
+            paso.put("costoAcumulado", acumuladoCosto);
+            paso.put("distanciaAcumulada", acumuladoDistancia);
+            paso.put("costoPorKm", acumuladoDistancia > 0 ? acumuladoCosto / acumuladoDistancia : 0);
+            pasos.add(paso);
+        }
+        return pasos;
     }
 }

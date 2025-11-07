@@ -360,40 +360,67 @@ function formatRecursiveResultModal(data, elementId) {
     const valor = isCost ? data.costoTotal : data.distanciaTotal;
     const unidad = isCost ? 'unidades monetarias' : 'kilómetros';
     
-    // Generar datos simulados para la visualización
-    const tramos = data.numeroTramos || 5;
-    const valorPorTramo = valor / tramos;
-    const costs = [];
-    for (let i = 0; i < tramos; i++) {
-        costs.push(valorPorTramo);
+    const valoresOriginales = (data.valoresOriginales || (isCost ? data.costosOriginales : data.distanciasOriginales) || [])
+        .map(Number);
+    let pasos = (data.pasosRecursion || []).map(paso => ({
+        indice: paso.indice,
+        valor: paso.valor != null ? Number(paso.valor) : 0,
+        acumulado: paso.acumulado != null ? Number(paso.acumulado) : 0
+    }));
+
+    if (!pasos.length && valoresOriginales.length) {
+        let acumulado = 0;
+        pasos = valoresOriginales.map((valorPaso, index) => {
+            acumulado += valorPaso;
+            return {
+                indice: index,
+                valor: valorPaso,
+                acumulado
+            };
+        });
     }
-    
-    // ID único para esta visualización
+
+    const vizCosts = valoresOriginales.length ? valoresOriginales : pasos.map(p => p.valor);
     const vizId = `recursion-viz-${Date.now()}`;
-    
+
     let stepsHtml = '';
-    let acumulado = 0;
-    
-    for (let i = 1; i <= tramos; i++) {
-        acumulado += valorPorTramo;
-        stepsHtml += `
-            <div class="modal-step">
-                <div class="modal-step-number">${i}</div>
-                <div class="modal-step-content">
-                    <div class="modal-step-title">Paso ${i}: Procesar tramo ${i}</div>
-                    <div class="modal-step-description">
-                        El algoritmo recursivo suma el ${tipo.toLowerCase()} del tramo actual.
+    if (pasos.length) {
+        pasos.forEach((paso, idx) => {
+            const tramo = paso.indice !== undefined && paso.indice !== null ? paso.indice + 1 : idx + 1;
+            stepsHtml += `
+                <div class="modal-step">
+                    <div class="modal-step-number">${tramo}</div>
+                    <div class="modal-step-content">
+                        <div class="modal-step-title">Paso ${tramo}: Procesar tramo ${tramo}</div>
+                        <div class="modal-step-description">
+                            El algoritmo recursivo suma el ${tipo.toLowerCase()} real recibido para este tramo.
+                        </div>
+                        <div class="modal-step-result">
+                            Valor del tramo: <strong>${paso.valor.toFixed(2)}</strong> ${unidad}<br>
+                            ${tipo} acumulado: <strong>${paso.acumulado.toFixed(2)}</strong> ${unidad}
+                        </div>
                     </div>
-                    <div class="modal-step-result">
-                        ${tipo} acumulado: ${acumulado.toFixed(2)} ${unidad}
+                </div>
+            `;
+        });
+    } else {
+        stepsHtml = `
+            <div class="modal-step">
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Sin datos disponibles</div>
+                    <div class="modal-step-description">
+                        No se recibieron tramos para mostrar la ejecución paso a paso.
                     </div>
                 </div>
             </div>
         `;
     }
-    
-    // Guardar datos para la visualización en un atributo
-    const vizData = JSON.stringify({ costs, tipo, valor });
+
+    const valoresResumen = valoresOriginales.length
+        ? valoresOriginales.map((v, i) => `Tramo ${i + 1}: ${v.toFixed(2)}`).join(' • ')
+        : '';
+
+    const vizData = JSON.stringify({ costs: vizCosts, tipo, valor });
     
     return `
         <!-- Visualización Paso a Paso (Full Width, Arriba) -->
@@ -432,6 +459,13 @@ function formatRecursiveResultModal(data, elementId) {
                         <div class="modal-stat-value">${data.numeroTramos}</div>
                     </div>
                     ` : ''}
+                    ${valoresOriginales.length ? `
+                    <div class="modal-stat-card" style="grid-column: span 2;">
+                        <div class="modal-stat-icon"><i class="fas fa-stream"></i></div>
+                        <div class="modal-stat-label">Valores Reales</div>
+                        <div class="modal-stat-value" style="white-space: normal;">${valoresResumen}</div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             
@@ -462,32 +496,54 @@ function formatRecursiveResultModal(data, elementId) {
 
 // Formatear métricas combinadas para modal
 function formatCombinedMetricsModal(data) {
-    // Calcular pasos del proceso
-    const tramos = 5; // Simulado
+    const costosOriginales = (data.costosOriginales || []).map(Number);
+    const distanciasOriginales = (data.distanciasOriginales || []).map(Number);
+    const pasos = (data.pasosCombinados || []).map(paso => ({
+        indice: paso.indice,
+        costo: paso.costo != null ? Number(paso.costo) : 0,
+        distancia: paso.distancia != null ? Number(paso.distancia) : 0,
+        costoAcumulado: paso.costoAcumulado != null ? Number(paso.costoAcumulado) : 0,
+        distanciaAcumulada: paso.distanciaAcumulada != null ? Number(paso.distanciaAcumulada) : 0,
+        costoPorKm: paso.costoPorKm != null && !Number.isNaN(Number(paso.costoPorKm)) ? Number(paso.costoPorKm) : 0
+    }));
+
     let stepsHtml = '';
-    let costoAcum = 0;
-    let distanciaAcum = 0;
-    
-    for (let i = 1; i <= tramos; i++) {
-        costoAcum += data.costoTotal / tramos;
-        distanciaAcum += data.distanciaTotal / tramos;
-        const costoPorKmActual = costoAcum / distanciaAcum;
-        
-        stepsHtml += `
+    if (pasos.length) {
+        stepsHtml = pasos.map(paso => `
             <div class="modal-step">
-                <div class="modal-step-number">${i}</div>
+                <div class="modal-step-number">${(paso.indice ?? 0) + 1}</div>
                 <div class="modal-step-content">
-                    <div class="modal-step-title">Paso ${i}: Calcular tramo ${i}</div>
+                    <div class="modal-step-title">Paso ${(paso.indice ?? 0) + 1}: Tramo ${(paso.indice ?? 0) + 1}</div>
                     <div class="modal-step-description">
-                        Se suman el costo y la distancia del tramo actual.
+                        Se agregan los valores reales del tramo a los acumulados.
                     </div>
                     <div class="modal-step-result">
-                        Costo: $${costoAcum.toFixed(2)} | Distancia: ${distanciaAcum.toFixed(2)} km | Ratio: ${costoPorKmActual.toFixed(2)}
+                        Costo del tramo: <strong>${paso.costo.toFixed(2)}</strong> | Distancia del tramo: <strong>${paso.distancia.toFixed(2)}</strong> km<br>
+                        Costo acumulado: <strong>${paso.costoAcumulado.toFixed(2)}</strong> | Distancia acumulada: <strong>${paso.distanciaAcumulada.toFixed(2)}</strong> km<br>
+                        Costo por km actual: <strong>${paso.costoPorKm.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        stepsHtml = `
+            <div class="modal-step">
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Sin datos disponibles</div>
+                    <div class="modal-step-description">
+                        No se encontraron tramos para construir el detalle paso a paso.
                     </div>
                 </div>
             </div>
         `;
     }
+
+    const resumenCostos = costosOriginales.length
+        ? costosOriginales.map((v, i) => `Tramo ${i + 1}: ${v.toFixed(2)}`).join(' • ')
+        : 'No disponible';
+    const resumenDistancias = distanciasOriginales.length
+        ? distanciasOriginales.map((v, i) => `Tramo ${i + 1}: ${v.toFixed(2)}`).join(' • ')
+        : 'No disponible';
     
     return `
         <div class="modal-result-section">
@@ -508,6 +564,16 @@ function formatCombinedMetricsModal(data) {
                         <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
                         <div class="modal-stat-label">Distancia Total</div>
                         <div class="modal-stat-value">${data.distanciaTotal.toFixed(2)} km</div>
+                    </div>
+                    <div class="modal-stat-card" style="grid-column: span 2;">
+                        <div class="modal-stat-icon"><i class="fas fa-stream"></i></div>
+                        <div class="modal-stat-label">Costos por tramo</div>
+                        <div class="modal-stat-value" style="white-space: normal;">${resumenCostos}</div>
+                    </div>
+                    <div class="modal-stat-card" style="grid-column: span 2;">
+                        <div class="modal-stat-icon"><i class="fas fa-road"></i></div>
+                        <div class="modal-stat-label">Distancias por tramo</div>
+                        <div class="modal-stat-value" style="white-space: normal;">${resumenDistancias}</div>
                     </div>
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
