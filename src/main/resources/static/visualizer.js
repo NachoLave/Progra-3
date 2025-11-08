@@ -387,10 +387,53 @@ class AlgorithmVisualizer {
         `;
         container.innerHTML = html;
 
-        this.drawGraph(edges, document.querySelector('.graph-svg'));
+        this.drawGraph(edges, document.querySelector('.graph-svg'), null);
     }
 
-    drawGraph(edges, svg) {
+    drawGraph(edges, svg, indexToCenter = null) {
+        // Limpiar SVG
+        svg.innerHTML = '';
+        
+        // Obtener dimensiones del SVG - usar todo el espacio disponible pero sin salirse
+        const container = svg.parentElement;
+        // Obtener dimensiones reales del contenedor, restando el padding
+        const containerRect = container ? container.getBoundingClientRect() : null;
+        const containerPadding = 40; // Padding del contenedor
+        const headerHeight = 35; // Altura del header con el mensaje
+        const containerWidth = containerRect ? (containerRect.width - (containerPadding * 2)) : 800;
+        const containerHeight = containerRect ? (containerRect.height - containerPadding - headerHeight) : 800;
+        
+        // Asegurar que no exceda los límites
+        const svgWidth = Math.max(800, containerWidth > 0 ? containerWidth : 1200);
+        const svgHeight = Math.max(700, containerHeight > 0 ? containerHeight : 800);
+        
+        // Actualizar atributos del SVG para usar todo el espacio pero mantener dentro del contenedor
+        svg.setAttribute('width', svgWidth);
+        svg.setAttribute('height', svgHeight);
+        svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        
+        // Crear un grupo para el pan (traslación)
+        let panGroup = svg.querySelector('g.pan-group');
+        if (!panGroup) {
+            panGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            panGroup.setAttribute('class', 'pan-group');
+            panGroup.setAttribute('transform', 'translate(0, 0)');
+            svg.appendChild(panGroup);
+        } else {
+            panGroup.innerHTML = ''; // Limpiar contenido anterior
+        }
+        
+        // Variables para pan (arrastrar el fondo)
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let panCurrentX = 0;
+        let panCurrentY = 0;
+        
+        // Variable compartida para rastrear si algún nodo está siendo arrastrado
+        let anyNodeDragging = false;
+        
         // Crear nodos únicos
         const nodes = new Set();
         edges.forEach(e => {
@@ -399,69 +442,349 @@ class AlgorithmVisualizer {
         });
         
         const nodeList = Array.from(nodes);
-        const radius = 150;
-        const centerX = 300;
-        const centerY = 200;
+        const nodeCount = nodeList.length;
         
-        // Posicionar nodos en círculo
+        // Calcular radio del círculo - usar TODO el espacio disponible
+        const padding = 150; // Espacio mínimo desde los bordes
+        const availableWidth = svgWidth - (padding * 2);
+        const availableHeight = svgHeight - (padding * 2);
+        // Usar el máximo espacio posible para el radio
+        const baseRadius = Math.min(availableWidth, availableHeight) * 0.45;
+        // Aumentar el radio significativamente si hay muchos nodos
+        const radius = baseRadius * (1 + Math.max(0, (nodeCount - 5) * 0.12));
+        const centerX = svgWidth / 2;
+        const centerY = svgHeight / 2;
+        
+        // Límites para los nodos (para que no se salgan del área visible)
+        const nodeMinX = padding;
+        const nodeMaxX = svgWidth - padding;
+        const nodeMinY = padding;
+        const nodeMaxY = svgHeight - padding;
+        
+        // Almacenar posiciones para poder actualizarlas al arrastrar
         const nodePositions = {};
+        const nodeInfo = {};
+        const nodeElements = {};
+        const edgeElements = [];
+        
+        // Función helper para obtener el nombre completo y corto del nodo
+        const getNodeInfo = (nodeIndex) => {
+            if (indexToCenter && indexToCenter[nodeIndex]) {
+                const centerName = indexToCenter[nodeIndex].name;
+                // Extraer solo la parte importante del nombre (después de "Centro")
+                const parts = centerName.split(' ');
+                let shortName = centerName;
+                if (parts.length > 2) {
+                    // Si tiene más de 2 palabras, tomar solo las últimas 2
+                    shortName = parts.slice(-2).join(' ');
+                }
+                // Si aún es muy largo, truncar inteligentemente
+                if (shortName.length > 20) {
+                    shortName = shortName.substring(0, 17) + '...';
+                }
+                return {
+                    full: centerName,
+                    short: shortName,
+                    id: indexToCenter[nodeIndex].id || `DC${nodeIndex}`
+                };
+            }
+            return {
+                full: `Centro ${nodeIndex}`,
+                short: `C${nodeIndex}`,
+                id: `DC${nodeIndex}`
+            };
+        };
+        
+        // Posicionar nodos en círculo con mejor espaciado
         nodeList.forEach((node, i) => {
-            const angle = (2 * Math.PI * i) / nodeList.length;
+            const angle = (2 * Math.PI * i) / nodeCount - Math.PI / 2; // Empezar desde arriba
             nodePositions[node] = {
                 x: centerX + radius * Math.cos(angle),
                 y: centerY + radius * Math.sin(angle)
             };
+            nodeInfo[node] = getNodeInfo(node);
         });
-
-        // Dibujar aristas
+        
+        // Función para actualizar las aristas cuando se mueve un nodo
+        const updateEdges = () => {
+            edgeElements.forEach(edgeData => {
+                const from = nodePositions[edgeData.from];
+                const to = nodePositions[edgeData.to];
+                edgeData.line.setAttribute('x1', from.x);
+                edgeData.line.setAttribute('y1', from.y);
+                edgeData.line.setAttribute('x2', to.x);
+                edgeData.line.setAttribute('y2', to.y);
+                
+                // Actualizar posición del label
+                const dx = to.x - from.x;
+                const dy = to.y - from.y;
+                const labelX = from.x + (dx * 0.35);
+                const labelY = from.y + (dy * 0.35);
+                
+                edgeData.bgRect.setAttribute('x', labelX - 28);
+                edgeData.bgRect.setAttribute('y', labelY - 10);
+                edgeData.text.setAttribute('x', labelX);
+                edgeData.text.setAttribute('y', labelY + 3);
+            });
+        };
+        
+        // Dibujar aristas primero (para que queden detrás de los nodos)
         edges.forEach((edge, index) => {
             const from = nodePositions[edge.from];
             const to = nodePositions[edge.to];
             
+            // Línea de la arista
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             line.setAttribute('x1', from.x);
             line.setAttribute('y1', from.y);
             line.setAttribute('x2', to.x);
             line.setAttribute('y2', to.y);
-            line.setAttribute('stroke', '#2563eb');
-            line.setAttribute('stroke-width', '2');
-            svg.appendChild(line);
+            line.setAttribute('stroke', '#60a5fa');
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('opacity', '0.8');
+            line.setAttribute('pointer-events', 'none'); // No interferir con el pan
+            panGroup.appendChild(line);
+            
+            // Fondo para el label del peso (para mejor legibilidad)
+            // Colocar el label más cerca de uno de los nodos para evitar el centro
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            // Colocar el label a 1/3 del camino desde el nodo origen
+            const labelX = from.x + (dx * 0.35);
+            const labelY = from.y + (dy * 0.35);
+            
+            const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bgRect.setAttribute('x', labelX - 28);
+            bgRect.setAttribute('y', labelY - 10);
+            bgRect.setAttribute('width', '56');
+            bgRect.setAttribute('height', '18');
+            bgRect.setAttribute('fill', '#1e293b');
+            bgRect.setAttribute('rx', '4');
+            bgRect.setAttribute('stroke', '#10b981');
+            bgRect.setAttribute('stroke-width', '1.5');
+            bgRect.setAttribute('opacity', '0.95');
+            bgRect.setAttribute('pointer-events', 'none'); // No interferir con el pan
+            panGroup.appendChild(bgRect);
             
             // Label del peso
-            const midX = (from.x + to.x) / 2;
-            const midY = (from.y + to.y) / 2;
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', midX);
-            text.setAttribute('y', midY - 5);
-            text.setAttribute('fill', '#10b981');
-            text.setAttribute('font-size', '12');
-            text.setAttribute('font-weight', 'bold');
-            text.textContent = edge.weight;
-            svg.appendChild(text);
+            const weightText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            weightText.setAttribute('x', labelX);
+            weightText.setAttribute('y', labelY + 3);
+            weightText.setAttribute('fill', '#10b981');
+            weightText.setAttribute('font-size', '10');
+            weightText.setAttribute('font-weight', 'bold');
+            weightText.setAttribute('text-anchor', 'middle');
+            weightText.setAttribute('pointer-events', 'none'); // No interferir con el pan
+            weightText.textContent = `$${edge.weight}`;
+            panGroup.appendChild(weightText);
+            
+            // Guardar referencia para actualizar al mover nodos
+            edgeElements.push({
+                from: edge.from,
+                to: edge.to,
+                line: line,
+                bgRect: bgRect,
+                text: weightText
+            });
         });
 
-        // Dibujar nodos
+        // Dibujar nodos con mejor diseño y hacerlos arrastrables
         nodeList.forEach(node => {
             const pos = nodePositions[node];
+            const info = nodeInfo[node];
+            
+            // Círculo del nodo (más grande para que se vean mejor los nombres)
+            const nodeRadius = nodeCount > 12 ? 50 : 60;
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             circle.setAttribute('cx', pos.x);
             circle.setAttribute('cy', pos.y);
-            circle.setAttribute('r', '20');
-            circle.setAttribute('fill', '#2563eb');
-            circle.setAttribute('stroke', '#fff');
-            circle.setAttribute('stroke-width', '2');
-            svg.appendChild(circle);
+            circle.setAttribute('r', nodeRadius);
+            circle.setAttribute('fill', '#1e40af');
+            circle.setAttribute('stroke', '#60a5fa');
+            circle.setAttribute('stroke-width', '3');
+            circle.setAttribute('class', 'graph-node');
+            circle.setAttribute('data-node-id', info.id);
+            circle.setAttribute('data-node-name', info.full);
+            circle.style.cursor = 'move';
+            panGroup.appendChild(circle);
             
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', pos.x);
-            text.setAttribute('y', pos.y + 5);
-            text.setAttribute('fill', '#fff');
-            text.setAttribute('font-size', '14');
-            text.setAttribute('font-weight', 'bold');
-            text.setAttribute('text-anchor', 'middle');
-            text.textContent = node;
-            svg.appendChild(text);
+            // Guardar referencia al círculo
+            nodeElements[node] = { circle: circle, texts: [] };
+            
+            // Hacer el nodo arrastrable con límites
+            let isDragging = false;
+            let currentX, currentY;
+            
+            const startDrag = (e) => {
+                e.stopPropagation(); // Evitar que active el pan
+                isDragging = true;
+                anyNodeDragging = true; // Marcar que un nodo está siendo arrastrado
+                const point = svg.createSVGPoint();
+                point.x = e.clientX || e.touches[0].clientX;
+                point.y = e.clientY || e.touches[0].clientY;
+                const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+                // Ajustar por el pan actual
+                const panTransform = panGroup.getAttribute('transform');
+                const panMatch = panTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+                const panX = panMatch ? parseFloat(panMatch[1]) : 0;
+                const panY = panMatch ? parseFloat(panMatch[2]) : 0;
+                currentX = svgPoint.x - panX - nodePositions[node].x;
+                currentY = svgPoint.y - panY - nodePositions[node].y;
+            };
+            
+            const drag = (e) => {
+                if (!isDragging) return;
+                e.stopPropagation(); // Evitar que active el pan
+                const point = svg.createSVGPoint();
+                point.x = e.clientX || (e.touches && e.touches[0].clientX);
+                point.y = e.clientY || (e.touches && e.touches[0].clientY);
+                const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+                
+                // Ajustar por el pan actual
+                const panTransform = panGroup.getAttribute('transform');
+                const panMatch = panTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+                const panX = panMatch ? parseFloat(panMatch[1]) : 0;
+                const panY = panMatch ? parseFloat(panMatch[2]) : 0;
+                
+                let newX = svgPoint.x - panX - currentX;
+                let newY = svgPoint.y - panY - currentY;
+                
+                // Aplicar límites para que el nodo no se salga del área visible
+                const nodeRadius = nodeCount > 12 ? 50 : 60;
+                newX = Math.max(nodeMinX + nodeRadius, Math.min(nodeMaxX - nodeRadius, newX));
+                newY = Math.max(nodeMinY + nodeRadius, Math.min(nodeMaxY - nodeRadius, newY));
+                
+                nodePositions[node].x = newX;
+                nodePositions[node].y = newY;
+                
+                // Actualizar posición del círculo
+                circle.setAttribute('cx', nodePositions[node].x);
+                circle.setAttribute('cy', nodePositions[node].y);
+                
+                // Actualizar posición de los textos
+                nodeElements[node].texts.forEach((text, i) => {
+                    const lineHeight = 14;
+                    const startY = nodePositions[node].y - ((nodeElements[node].texts.length - 1) * lineHeight / 2);
+                    text.setAttribute('x', nodePositions[node].x);
+                    text.setAttribute('y', startY + (i * lineHeight));
+                });
+                
+                // Actualizar aristas
+                updateEdges();
+            };
+            
+            const endDrag = (e) => {
+                if (isDragging) {
+                    e.stopPropagation(); // Evitar que active el pan
+                }
+                isDragging = false;
+                anyNodeDragging = false; // Marcar que ningún nodo está siendo arrastrado
+            };
+            
+            circle.addEventListener('mousedown', startDrag);
+            circle.addEventListener('touchstart', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+            
+            // Texto del nombre (dividir en líneas si es necesario)
+            const nameParts = info.short.split(' ');
+            const maxCharsPerLine = 16; // Más caracteres por línea para nombres más largos
+            const lines = [];
+            let currentLine = '';
+            
+            nameParts.forEach(part => {
+                if ((currentLine + ' ' + part).length <= maxCharsPerLine) {
+                    currentLine = currentLine ? currentLine + ' ' + part : part;
+                } else {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = part;
+                }
+            });
+            if (currentLine) lines.push(currentLine);
+            
+            // Si solo hay una línea pero es muy larga, dividirla
+            if (lines.length === 1 && lines[0].length > maxCharsPerLine) {
+                const originalLine = lines[0];
+                const mid = Math.floor(originalLine.length / 2);
+                const spaceIndex = originalLine.lastIndexOf(' ', mid);
+                if (spaceIndex > 0) {
+                    lines[0] = originalLine.substring(0, spaceIndex);
+                    lines[1] = originalLine.substring(spaceIndex + 1);
+                } else {
+                    lines[0] = originalLine.substring(0, mid);
+                    lines[1] = originalLine.substring(mid);
+                }
+            }
+            
+            const lineHeight = 14; // Más espacio entre líneas
+            const startY = pos.y - ((lines.length - 1) * lineHeight / 2);
+            
+            lines.forEach((line, i) => {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', pos.x);
+                text.setAttribute('y', startY + (i * lineHeight));
+                text.setAttribute('fill', '#ffffff');
+                text.setAttribute('font-size', nodeCount > 12 ? '12' : '13'); // Fuente más grande
+                text.setAttribute('font-weight', '600');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('pointer-events', 'none'); // No interferir con el arrastre
+                text.textContent = line;
+                panGroup.appendChild(text);
+                nodeElements[node].texts.push(text);
+            });
+            
+            // Tooltip (título) para mostrar nombre completo al hacer hover
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = `${info.full} (${info.id})`;
+            circle.appendChild(title);
         });
+        
+        // Implementar pan (arrastrar el fondo) para navegar el grafo
+        const startPan = (e) => {
+            // Solo activar pan si no se está arrastrando un nodo
+            if (anyNodeDragging) return;
+            isPanning = true;
+            panStartX = e.clientX || (e.touches && e.touches[0].clientX);
+            panStartY = e.clientY || (e.touches && e.touches[0].clientY);
+            const panTransform = panGroup.getAttribute('transform');
+            const panMatch = panTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+            if (panMatch) {
+                panCurrentX = parseFloat(panMatch[1]);
+                panCurrentY = parseFloat(panMatch[2]);
+            }
+            svg.style.cursor = 'grabbing';
+        };
+        
+        const doPan = (e) => {
+            if (!isPanning) return;
+            const currentX = e.clientX || (e.touches && e.touches[0].clientX);
+            const currentY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const dx = currentX - panStartX;
+            const dy = currentY - panStartY;
+            
+            const newPanX = panCurrentX + dx;
+            const newPanY = panCurrentY + dy;
+            
+            panGroup.setAttribute('transform', `translate(${newPanX}, ${newPanY})`);
+        };
+        
+        const endPan = () => {
+            isPanning = false;
+            svg.style.cursor = 'grab';
+        };
+        
+        // Agregar listeners para pan en el SVG (fondo)
+        svg.style.cursor = 'grab';
+        svg.addEventListener('mousedown', startPan);
+        svg.addEventListener('touchstart', startPan);
+        document.addEventListener('mousemove', doPan);
+        document.addEventListener('touchmove', doPan);
+        document.addEventListener('mouseup', endPan);
+        document.addEventListener('touchend', endPan);
     }
 
     // Visualizar Programación Dinámica - tabla DP

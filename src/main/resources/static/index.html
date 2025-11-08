@@ -235,22 +235,31 @@
                     <div class="card">
                         <h3><i class="fas fa-network-wired"></i> MST - Kruskal</h3>
                         <div class="form-group">
-                            <label><i class="fas fa-calculator"></i> Número de Vértices:</label>
-                            <input type="number" id="kruskal-vertices" placeholder="4" value="4" min="2" max="10">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-plus-circle"></i> Agregar Rutas (Conectores):</label>
-                            <div class="edge-builder">
-                                <div class="edge-input-group">
-                                    <input type="number" id="edge-from" placeholder="Desde" min="0" class="edge-input-small">
-                                    <i class="fas fa-arrow-right"></i>
-                                    <input type="number" id="edge-to" placeholder="Hasta" min="0" class="edge-input-small">
-                                    <input type="number" id="edge-weight" placeholder="Peso" min="0" step="0.1" class="edge-input-small">
-                                    <button type="button" class="btn-add-edge" onclick="agregarRutaKruskal()">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                            <label><i class="fas fa-database"></i> Usar datos de Neo4j:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <p style="margin: 0 0 0.75rem 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona los centros y rutas que deseas usar para calcular el MST
+                                </p>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-warehouse"></i> Centros de Distribución:
+                                    </label>
+                                    <div class="loading-spinner" id="kruskal-centers-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="kruskal-centers-container" class="selectable-items-container"></div>
                                 </div>
-                                <div id="rutas-agregadas" class="rutas-list"></div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-route"></i> Rutas:
+                                    </label>
+                                    <div class="loading-spinner" id="kruskal-routes-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="kruskal-routes-container" class="selectable-items-container"></div>
+                                </div>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="calcularKruskal()">
@@ -262,26 +271,40 @@
                     <div class="card">
                         <h3><i class="fas fa-route"></i> Dijkstra - Caminos Más Cortos</h3>
                         <div class="form-group">
-                            <label><i class="fas fa-calculator"></i> Número de Vértices:</label>
-                            <input type="number" id="dijkstra-vertices" placeholder="5" value="5" min="2" max="10">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-play-circle"></i> Vértice Origen:</label>
-                            <input type="number" id="dijkstra-source" placeholder="0" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-link"></i> Agregar Conexiones:</label>
-                            <div class="edge-builder">
-                                <div class="edge-input-group">
-                                    <input type="number" id="dijkstra-from" placeholder="Desde" min="0" class="edge-input-small">
-                                    <i class="fas fa-arrow-right"></i>
-                                    <input type="number" id="dijkstra-to" placeholder="Hasta" min="0" class="edge-input-small">
-                                    <input type="number" id="dijkstra-weight" placeholder="Distancia" min="0" step="0.1" class="edge-input-small">
-                                    <button type="button" class="btn-add-edge" onclick="agregarRutaDijkstra()">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                            <label><i class="fas fa-database"></i> Usar datos de Neo4j:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <p style="margin: 0 0 0.75rem 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona los centros, rutas y el centro de origen para calcular los caminos más cortos
+                                </p>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-warehouse"></i> Centros de Distribución:
+                                    </label>
+                                    <div class="loading-spinner" id="dijkstra-centers-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="dijkstra-centers-container" class="selectable-items-container"></div>
                                 </div>
-                                <div id="dijkstra-rutas-agregadas" class="rutas-list"></div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-route"></i> Rutas:
+                                    </label>
+                                    <div class="loading-spinner" id="dijkstra-routes-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="dijkstra-routes-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-play-circle"></i> Centro de Origen:
+                                    </label>
+                                    <select id="dijkstra-source-select" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="">Selecciona un centro de origen</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="calcularDijkstra()">

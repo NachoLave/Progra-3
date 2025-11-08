@@ -103,6 +103,193 @@ public class GraphService {
     public int obtenerNumeroVertices() {
         return (int) distributionCenterRepository.count();
     }
+    
+    /**
+     * Obtiene todos los centros de distribución para selección
+     */
+    public List<Map<String, Object>> obtenerCentrosParaSeleccion() {
+        List<DistributionCenter> centers = distributionCenterRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (DistributionCenter center : centers) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", center.getId() != null ? center.getId() : "");
+            map.put("name", center.getName() != null ? center.getName() : "");
+            map.put("city", center.getCity() != null ? center.getCity() : "");
+            map.put("province", center.getProvince() != null ? center.getProvince() : "");
+            map.put("demandLevel", center.getDemandLevel() != null ? center.getDemandLevel() : 0);
+            map.put("capacity", center.getCapacity() != null ? center.getCapacity() : 0);
+            map.put("priority", center.getPriority() != null ? center.getPriority() : 0);
+            result.add(map);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Obtiene todas las rutas para selección
+     */
+    public List<Map<String, Object>> obtenerRutasParaSeleccion() {
+        List<Route> routes = routeRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (Route route : routes) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", route.getId() != null ? route.getId() : "");
+            map.put("name", route.getName() != null ? route.getName() : "");
+            map.put("distance", route.getDistance() != null ? route.getDistance() : 0.0);
+            map.put("cost", route.getCost() != null ? route.getCost() : 0.0);
+            
+            // Obtener información de centros conectados
+            try {
+                DistributionCenter from = route.getFromCenter();
+                DistributionCenter to = route.getToCenter();
+                map.put("fromCenterId", from != null && from.getId() != null ? from.getId() : "N/A");
+                map.put("fromCenterName", from != null && from.getName() != null ? from.getName() : "N/A");
+                map.put("toCenterId", to != null && to.getId() != null ? to.getId() : "N/A");
+                map.put("toCenterName", to != null && to.getName() != null ? to.getName() : "N/A");
+            } catch (Exception e) {
+                map.put("fromCenterId", "N/A");
+                map.put("fromCenterName", "N/A");
+                map.put("toCenterId", "N/A");
+                map.put("toCenterName", "N/A");
+            }
+            
+            result.add(map);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Construye el grafo usando centros y rutas seleccionados
+     */
+    public List<Edge> construirGrafoConSeleccion(List<String> selectedCenterIds, List<String> selectedRouteIds) {
+        if (selectedCenterIds == null || selectedCenterIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Obtener centros seleccionados
+        List<DistributionCenter> selectedCenters = new ArrayList<>();
+        for (String centerId : selectedCenterIds) {
+            distributionCenterRepository.findById(centerId).ifPresent(selectedCenters::add);
+        }
+        
+        // Crear mapa de ID de centro a índice
+        Map<String, Integer> centerToIndex = new HashMap<>();
+        for (int i = 0; i < selectedCenters.size(); i++) {
+            centerToIndex.put(selectedCenters.get(i).getId(), i);
+        }
+        
+        // Obtener rutas seleccionadas
+        List<Route> selectedRoutes = new ArrayList<>();
+        if (selectedRouteIds != null && !selectedRouteIds.isEmpty()) {
+            for (String routeId : selectedRouteIds) {
+                routeRepository.findById(routeId).ifPresent(selectedRoutes::add);
+            }
+        }
+        
+        // Construir aristas solo para rutas que conectan centros seleccionados
+        List<Edge> edges = new ArrayList<>();
+        for (Route route : selectedRoutes) {
+            DistributionCenter from = route.getFromCenter();
+            DistributionCenter to = route.getToCenter();
+            
+            if (from != null && to != null && 
+                centerToIndex.containsKey(from.getId()) && 
+                centerToIndex.containsKey(to.getId())) {
+                
+                int fromIndex = centerToIndex.get(from.getId());
+                int toIndex = centerToIndex.get(to.getId());
+                
+                // Usar costo total si está disponible, sino distancia
+                double weight = route.getCost() != null ? route.getCost() : 
+                               (route.getDistance() != null ? route.getDistance() : 0.0);
+                
+                edges.add(new Edge(fromIndex, toIndex, weight));
+            }
+        }
+        
+        return edges;
+    }
+
+    /**
+     * Construye una lista de adyacencia para Dijkstra usando centros y rutas seleccionados
+     * @param selectedCenterIds Lista de IDs de centros seleccionados
+     * @param selectedRouteIds Lista de IDs de rutas seleccionadas
+     * @return Mapa de índice de vértice a lista de vecinos [índice_vecino, peso]
+     */
+    public Map<Integer, List<int[]>> construirListaAdyacenciaConSeleccion(List<String> selectedCenterIds, List<String> selectedRouteIds) {
+        Map<Integer, List<int[]>> adjacencyList = new HashMap<>();
+        
+        if (selectedCenterIds == null || selectedCenterIds.isEmpty()) {
+            return adjacencyList;
+        }
+        
+        // Obtener centros seleccionados
+        List<DistributionCenter> selectedCenters = new ArrayList<>();
+        for (String centerId : selectedCenterIds) {
+            distributionCenterRepository.findById(centerId).ifPresent(selectedCenters::add);
+        }
+        
+        // Crear mapa de ID de centro a índice
+        Map<String, Integer> centerToIndex = new HashMap<>();
+        for (int i = 0; i < selectedCenters.size(); i++) {
+            centerToIndex.put(selectedCenters.get(i).getId(), i);
+        }
+        
+        // Obtener rutas seleccionadas
+        List<Route> selectedRoutes = new ArrayList<>();
+        if (selectedRouteIds != null && !selectedRouteIds.isEmpty()) {
+            for (String routeId : selectedRouteIds) {
+                routeRepository.findById(routeId).ifPresent(selectedRoutes::add);
+            }
+        }
+        
+        // Construir lista de adyacencia solo para rutas que conectan centros seleccionados
+        for (Route route : selectedRoutes) {
+            DistributionCenter from = route.getFromCenter();
+            DistributionCenter to = route.getToCenter();
+            
+            if (from != null && to != null && 
+                centerToIndex.containsKey(from.getId()) && 
+                centerToIndex.containsKey(to.getId())) {
+                
+                int fromIndex = centerToIndex.get(from.getId());
+                int toIndex = centerToIndex.get(to.getId());
+                
+                // Usar costo total si está disponible, sino distancia
+                double weight = route.getCost() != null ? route.getCost() : 
+                               (route.getDistance() != null ? route.getDistance() : 0.0);
+                
+                // Agregar a la lista de adyacencia
+                adjacencyList.computeIfAbsent(fromIndex, k -> new ArrayList<>())
+                             .add(new int[]{toIndex, (int) Math.round(weight)});
+            }
+        }
+        
+        return adjacencyList;
+    }
+
+    /**
+     * Obtiene el índice de un centro en la lista de centros seleccionados
+     * @param selectedCenterIds Lista de IDs de centros seleccionados
+     * @param sourceCenterId ID del centro origen
+     * @return Índice del centro origen, o -1 si no está seleccionado
+     */
+    public int obtenerIndiceCentroOrigen(List<String> selectedCenterIds, String sourceCenterId) {
+        if (selectedCenterIds == null || sourceCenterId == null) {
+            return -1;
+        }
+        
+        for (int i = 0; i < selectedCenterIds.size(); i++) {
+            if (selectedCenterIds.get(i).equals(sourceCenterId)) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
 
     /**
      * Representa una arista en el grafo

@@ -68,6 +68,18 @@ function showResult(elementId, data, isJson = false) {
     else if (elementId.includes('dijkstra-result')) {
         modalContent = formatDijkstraResultModal(data);
         modalTitle = 'Caminos Más Cortos - Dijkstra';
+         
+         // Inicializar visualización después de que el modal se muestre
+         setTimeout(() => {
+             const vizContainer = document.querySelector('.modal-visualization-container[data-viz-data]');
+             if (vizContainer) {
+                 const vizData = JSON.parse(vizContainer.getAttribute('data-viz-data'));
+                 const svg = vizContainer.querySelector('.graph-svg');
+                 if (svg && vizData.edges && vizData.edges.length > 0) {
+                     visualizer.drawGraph(vizData.edges, svg, vizData.indexToCenter);
+                 }
+             }
+         }, 100);
     }
     // Módulo 5: Programación Dinámica
     else if (elementId.includes('knapsack-result') && !elementId.includes('compare')) {
@@ -119,7 +131,7 @@ function iniciarVisualizaciones() {
         } else if (vizId.includes('greedy-viz')) {
             // Visualización Greedy
             iniciarVisualizacionGreedy(container, vizData);
-        } else if (vizId.includes('graph-viz')) {
+        } else if (vizId.includes('graph-viz') || vizId.includes('dijkstra-viz')) {
             // Visualización de grafo
             iniciarVisualizacionGrafo(container, vizData);
         } else if (vizId.includes('dp-viz')) {
@@ -226,13 +238,14 @@ function iniciarVisualizacionBudget(container, data) {
 function iniciarVisualizacionGrafo(container, data) {
     const edges = data.edges || [];
     const algoritmo = data.algoritmo || 'Kruskal';
+    const indexToCenter = data.indexToCenter || null;
     const svg = container.querySelector('.graph-svg');
     if (!svg) return;
     
     const visualizer = new AlgorithmVisualizer();
     
     // Dibujar el grafo inicial
-    visualizer.drawGraph(edges, svg);
+    visualizer.drawGraph(edges, svg, indexToCenter);
     
     // Si hay pasos, animarlos uno por uno
     if (edges.length > 0 && algoritmo === 'Kruskal') {
@@ -245,14 +258,14 @@ function iniciarVisualizacionGrafo(container, data) {
         function renderNextStep() {
             if (stepIndex >= edges.length) {
                 // Mostrar grafo completo al final
-                visualizer.drawGraph(edges, svg);
+                visualizer.drawGraph(edges, svg, indexToCenter);
                 return;
             }
             
             // Mostrar aristas hasta el paso actual
             const edgesToShow = edges.slice(0, stepIndex + 1);
             svg.innerHTML = '';
-            visualizer.drawGraph(edgesToShow, svg);
+            visualizer.drawGraph(edgesToShow, svg, indexToCenter);
             
             stepIndex++;
             setTimeout(() => renderNextStep(), speed);
@@ -261,7 +274,7 @@ function iniciarVisualizacionGrafo(container, data) {
         renderNextStep();
     } else {
         // Mostrar grafo completo de una vez
-        visualizer.drawGraph(edges, svg);
+        visualizer.drawGraph(edges, svg, indexToCenter);
     }
 }
 
@@ -917,7 +930,7 @@ function formatMSTResult(data, algoritmo) {
                 ${edges.map((edge, index) => `
                     <div class="edge-item">
                         <span class="edge-number">${index + 1}</span>
-                        <span class="edge-connection">${edge.from} → ${edge.to}</span>
+                        <span class="edge-connection">${edge.fromName || edge.from} → ${edge.toName || edge.to}</span>
                         <span class="edge-weight">Peso: ${edge.weight}</span>
                     </div>
                 `).join('')}
@@ -930,11 +943,12 @@ function formatMSTResult(data, algoritmo) {
             </div>
         </div>
         <div class="result-explanation">
-            <h5><i class="fas fa-lightbulb"></i> Explicación:</h5>
-            <p>El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
-            los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
-            'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
-            'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}</p>
+            <h5><i class="fas fa-lightbulb"></i> ¿Qué hace este algoritmo?</h5>
+            <p><strong>${algoritmo === 'Kruskal' ? 'Kruskal' : 'Prim'}</strong> resuelve un problema muy común en logística: <strong>¿cómo conectar todos los puntos gastando lo menos posible?</strong></p>
+            <p>${algoritmo === 'Kruskal' ? 
+            '<strong>Paso a paso:</strong><br>1️⃣ Ordena todas las rutas de menor a mayor costo<br>2️⃣ Empieza a agregar rutas una por una, siempre eligiendo la más barata<br>3️⃣ Solo agrega una ruta si no crea un ciclo (no vuelve a un punto ya conectado)<br>4️⃣ Para cuando todos los puntos están conectados<br><br><strong>Ejemplo práctico:</strong> Si tienes 4 ciudades y varias carreteras posibles, este algoritmo te dice cuáles construir para que todas estén conectadas y gastes menos dinero.' : 
+            '<strong>Paso a paso:</strong><br>1️⃣ Empieza desde cualquier punto<br>2️⃣ Mira todas las rutas disponibles desde ese punto<br>3️⃣ Elige la ruta más barata que conecte con un punto nuevo<br>4️⃣ Repite hasta conectar todos los puntos<br><br><strong>Ejemplo práctico:</strong> Como construir una red de carreteras empezando desde una ciudad y expandiéndote siempre por el camino más económico.'}</p>
+            <p><strong>Resultado:</strong> Obtienes la red de conexiones más barata posible que une todos los puntos sin crear rutas innecesarias.</p>
         </div>
     `;
     return html;
@@ -970,10 +984,16 @@ function formatDijkstraResult(data) {
             </div>
         </div>
         <div class="result-explanation">
-            <h5><i class="fas fa-lightbulb"></i> Explicación:</h5>
-            <p>El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
-            vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
-            primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.</p>
+            <h5><i class="fas fa-lightbulb"></i> ¿Qué hace este algoritmo?</h5>
+            <p><strong>Dijkstra</strong> resuelve un problema que todos usamos a diario: <strong>¿cuál es el camino más corto desde donde estoy hasta cualquier otro lugar?</strong></p>
+            <p><strong>Paso a paso:</strong><br>
+            1️⃣ Empieza desde el punto de origen (distancia = 0)<br>
+            2️⃣ Explora todos los lugares a los que puedes llegar directamente desde el origen<br>
+            3️⃣ Para cada lugar nuevo, calcula la distancia total desde el origen<br>
+            4️⃣ Siempre elige explorar primero el lugar más cercano que aún no hayas visitado<br>
+            5️⃣ Repite hasta haber encontrado el camino más corto a todos los lugares<br><br>
+            <strong>Ejemplo práctico:</strong> Es como usar Google Maps. Le dices "quiero ir desde mi casa" y te muestra la distancia más corta a cada lugar posible. Si hay varios caminos, siempre elige el más rápido.</p>
+            <p><strong>Resultado:</strong> Obtienes la distancia más corta desde tu punto de partida hasta cada uno de los demás puntos, y sabes exactamente cuál es el mejor camino para llegar a cada destino.</p>
         </div>
     `;
     return html;
@@ -1509,18 +1529,20 @@ function formatMSTResultModal(data, algoritmo) {
     
     // Preparar datos para visualización de grafo
     const vizId = `graph-viz-${Date.now()}`;
-    const vizData = JSON.stringify({ edges, algoritmo });
+    const vizData = JSON.stringify({ edges, algoritmo, indexToCenter: data.indexToCenter || null });
     
     let stepsHtml = '';
     let costoAcumulado = 0;
     
     edges.forEach((edge, index) => {
         costoAcumulado += edge.weight;
+        const fromName = edge.fromName || `Centro ${edge.from}`;
+        const toName = edge.toName || `Centro ${edge.to}`;
         stepsHtml += `
             <div class="modal-step">
                 <div class="modal-step-number">${index + 1}</div>
                 <div class="modal-step-content">
-                    <div class="modal-step-title">Paso ${index + 1}: Agregar ruta ${edge.from} → ${edge.to}</div>
+                    <div class="modal-step-title">Paso ${index + 1}: Agregar ruta ${fromName} → ${toName}</div>
                     <div class="modal-step-description">
                         ${algoritmo === 'Kruskal' ? 
                             'Se agrega la arista si no forma ciclo con las ya seleccionadas.' : 
@@ -1537,8 +1559,11 @@ function formatMSTResultModal(data, algoritmo) {
     return `
         <!-- Visualización Paso a Paso (Full Width, Arriba) -->
         <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
-            <div class="graph-visualization" style="min-height: 400px;">
-                <svg width="100%" height="400" class="graph-svg"></svg>
+            <div class="graph-visualization" style="width: 100%; min-height: 900px; max-height: 900px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 8px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+                <div style="margin-bottom: 15px; color: #94a3b8; font-size: 13px; text-align: center; flex-shrink: 0;">
+                    <i class="fas fa-hand-pointer"></i> Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo
+                </div>
+                <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
             </div>
         </div>
         
@@ -1577,13 +1602,48 @@ function formatMSTResultModal(data, algoritmo) {
             <!-- Explicación a lo largo completo -->
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona con tus Datos Reales?
                 </div>
                 <div class="modal-explanation-text">
-                    El algoritmo de <strong>${algoritmo}</strong> encuentra el árbol de recubrimiento mínimo (MST) que conecta todos 
-                    los centros con el menor costo total posible. ${algoritmo === 'Kruskal' ? 
-                    'Ordena las aristas por peso y las agrega si no forman ciclos.' : 
-                    'Comienza desde un vértice y siempre agrega la arista de menor peso que conecte con un vértice no visitado.'}
+                    <p><strong>Problema que resuelve:</strong> Imagina que tienes varias ciudades (o centros de distribución) y varias rutas posibles entre ellas, cada una con un costo diferente. Quieres conectar todas las ciudades gastando lo menos posible, sin crear rutas innecesarias.</p>
+                    
+                    ${data.fuente === 'neo4j-selected' ? 
+                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando centros y rutas seleccionados de tu base de datos Neo4j.<br>' + 
+                    (data.centrosSeleccionados ? `<strong>Centros seleccionados:</strong> ${data.centrosSeleccionados}<br>` : '') +
+                    (data.rutasSeleccionadas ? `<strong>Rutas seleccionadas:</strong> ${data.rutasSeleccionadas}</p>` : '</p>') :
+                    data.fuente === 'neo4j' ? 
+                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando datos reales de tu base de datos Neo4j (centros de distribución y rutas almacenados).</p>' : 
+                    '<p style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-left: 3px solid #22c55e; margin-bottom: 1rem;"><i class="fas fa-keyboard"></i> <strong>Datos utilizados:</strong> Se están usando los datos que ingresaste manualmente.</p>'}
+                    
+                    <p><strong>Con tus datos:</strong></p>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>📊 <strong>Rutas seleccionadas (solución óptima):</strong> El algoritmo encontró ${edges.length} rutas que conectan todas las ciudades con el menor costo:
+                            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                ${edges.map((e, i) => `<li>Ruta ${e.from} → ${e.to}: $${e.weight.toFixed(2)}</li>`).join('')}
+                            </ul>
+                        </li>
+                        <li>🔄 <strong>Proceso del algoritmo ${algoritmo}:</strong>
+                            ${algoritmo === 'Kruskal' ? 
+                            `<ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                <li>1️⃣ Ordena todas las rutas de menor a mayor costo</li>
+                                <li>2️⃣ Empieza con la ruta más barata: ${edges[0] ? `Ruta ${edges[0].from} → ${edges[0].to} ($${edges[0].weight.toFixed(2)})` : 'N/A'}</li>
+                                <li>3️⃣ Agrega la siguiente ruta más barata, pero solo si no crea un ciclo (no vuelve a una ciudad ya conectada)</li>
+                                <li>4️⃣ Repite hasta que todas las ciudades estén conectadas</li>
+                            </ul>` :
+                            `<ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                <li>1️⃣ Empieza desde una ciudad (por ejemplo, ciudad 0)</li>
+                                <li>2️⃣ Mira todas las rutas disponibles desde esa ciudad</li>
+                                <li>3️⃣ Elige la ruta más barata que conecte con una ciudad nueva</li>
+                                <li>4️⃣ Repite desde las ciudades ya conectadas hasta conectar todas</li>
+                            </ul>`}
+                        </li>
+                        <li>✅ <strong>Resultado final:</strong> Se seleccionaron ${data.numeroAristas} rutas que conectan todas las ciudades con un costo total de <strong>$${data.costoTotal.toFixed(2)}</strong></li>
+                        <li>💰 <strong>Ahorro:</strong> Si hubieras conectado todas las ciudades de forma directa (sin optimizar), habrías gastado mucho más. Este algoritmo te garantiza el menor costo posible.</li>
+                    </ol>
+                    
+                    <p><strong>Ejemplo práctico:</strong> Si las ciudades son centros de distribución y las rutas son carreteras que puedes construir, este algoritmo te dice exactamente qué carreteras construir para que todos los centros estén conectados y gastes menos dinero en construcción.</p>
+                    
+                    <p><strong>¿Por qué funciona?</strong> El algoritmo siempre elige la opción más barata disponible en cada paso, y evita crear ciclos (rutas que vuelven a ciudades ya conectadas), lo que garantiza que encuentres la solución óptima.</p>
                 </div>
             </div>
         </div>
@@ -1591,21 +1651,98 @@ function formatMSTResultModal(data, algoritmo) {
 }
 
 function formatDijkstraResultModal(data) {
+    console.log('DEBUG formatDijkstraResultModal: data recibido:', data);
     const distances = data.distances || {};
-    const entries = Object.entries(distances).filter(([k, v]) => v !== null).sort((a, b) => a[1] - b[1]);
+    const entries = Object.entries(distances).filter(([k, v]) => v !== null && v !== undefined).sort((a, b) => a[1] - b[1]);
+    console.log('DEBUG formatDijkstraResultModal: entries:', entries.length, entries);
+    
+    // Obtener información de centros
+    const indexToCenter = data.indexToCenter || {};
+    const centers = data.centers || [];
+    const edges = data.edges || [];
+    
+    // Crear mapa de índice a nombre de centro
+    const indexToCenterName = {};
+    
+    // Si indexToCenter es un objeto con strings como keys, usarlo directamente
+    if (indexToCenter && Object.keys(indexToCenter).length > 0) {
+        Object.entries(indexToCenter).forEach(([index, centerInfo]) => {
+            const numIndex = parseInt(index);
+            if (typeof centerInfo === 'object' && centerInfo !== null) {
+                // Si ya tiene la estructura {id, name}
+                indexToCenterName[numIndex] = centerInfo;
+                indexToCenterName[index] = centerInfo; // También con string key para compatibilidad
+            } else if (typeof centerInfo === 'string') {
+                // Si es solo un ID, buscar el centro
+                const center = centers.find(c => c.id === centerInfo);
+                if (center) {
+                    const centerObj = {
+                        id: center.id,
+                        name: center.name || center.id
+                    };
+                    indexToCenterName[numIndex] = centerObj;
+                    indexToCenterName[index] = centerObj; // También con string key
+                }
+            }
+        });
+    } else if (centers.length > 0) {
+        // Si no hay indexToCenter, crear uno basado en el orden de centers
+        centers.forEach((center, index) => {
+            const centerObj = {
+                id: center.id,
+                name: center.name || center.id
+            };
+            indexToCenterName[index] = centerObj;
+            indexToCenterName[String(index)] = centerObj; // También con string key
+        });
+    }
+    
+    // Obtener nombre del centro origen
+    const sourceIndex = data.source !== undefined && data.source !== null ? parseInt(data.source) : 0;
+    
+    // Intentar obtener el nombre del centro origen de varias formas
+    let sourceCenterName = `Centro ${sourceIndex}`;
+    let sourceCenterId = '';
+    
+    // Intentar con número primero, luego con string
+    const sourceCenterInfo = indexToCenterName[sourceIndex] || indexToCenterName[String(sourceIndex)];
+    if (sourceCenterInfo?.name) {
+        sourceCenterName = sourceCenterInfo.name;
+        sourceCenterId = sourceCenterInfo.id;
+    } else if (data.sourceCenterName) {
+        sourceCenterName = data.sourceCenterName;
+        sourceCenterId = data.sourceCenterId || '';
+    } else if (centers.length > sourceIndex) {
+        // Si hay centros y el índice es válido, usar ese centro
+        sourceCenterName = centers[sourceIndex].name || centers[sourceIndex].id;
+        sourceCenterId = centers[sourceIndex].id;
+    }
+    
+    console.log('DEBUG formatDijkstraResultModal: sourceIndex:', sourceIndex);
+    console.log('DEBUG formatDijkstraResultModal: sourceCenterName:', sourceCenterName);
+    console.log('DEBUG formatDijkstraResultModal: indexToCenterName:', indexToCenterName);
+    console.log('DEBUG formatDijkstraResultModal: entries.length:', entries.length);
+    console.log('DEBUG formatDijkstraResultModal: data.complejidad:', data.complejidad);
+    
+    // Preparar datos para visualización de grafo
+    const vizId = `dijkstra-viz-${Date.now()}`;
+    const vizData = JSON.stringify({ edges, indexToCenter: indexToCenterName, distances, source: sourceIndex });
     
     let stepsHtml = '';
     entries.forEach(([vertice, distancia], index) => {
+        const verticeNum = parseInt(vertice);
+        const centerInfo = indexToCenterName[verticeNum] || indexToCenterName[vertice] || null;
+        const centerName = centerInfo?.name || `Centro ${vertice}`;
         stepsHtml += `
             <div class="modal-step">
                 <div class="modal-step-number">${index + 1}</div>
                 <div class="modal-step-content">
-                    <div class="modal-step-title">Paso ${index + 1}: Explorar vértice ${vertice}</div>
+                    <div class="modal-step-title">Paso ${index + 1}: ${centerName}</div>
                     <div class="modal-step-description">
-                        Dijkstra calcula la distancia mínima desde el origen hasta este vértice.
+                        Dijkstra calcula la distancia mínima desde ${sourceCenterName} hasta ${centerName}.
                     </div>
                     <div class="modal-step-result">
-                        Distancia mínima: ${distancia.toFixed(2)}
+                        Distancia mínima: $${distancia.toFixed(2)}
                     </div>
                 </div>
             </div>
@@ -1613,37 +1750,52 @@ function formatDijkstraResultModal(data) {
     });
     
     return `
+        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+            <div class="graph-visualization" style="width: 100%; min-height: 900px; max-height: 900px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 8px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
+                <div style="margin-bottom: 15px; color: #94a3b8; font-size: 13px; text-align: center; flex-shrink: 0;">
+                    <i class="fas fa-hand-pointer"></i> Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo
+                </div>
+                <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
+            </div>
+        </div>
+        
         <div class="modal-result-section">
             <!-- Columna Izquierda: Resultado Principal -->
             <div class="modal-left-column">
                 <div class="modal-highlight-box">
-                    <div class="modal-highlight-value">${data.source}</div>
-                    <div class="modal-highlight-label">Vértice Origen</div>
+                    <div class="modal-highlight-value">${sourceCenterName}</div>
+                    <div class="modal-highlight-label">Centro de Origen</div>
                 </div>
                 
                 <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-map-marked-alt"></i></div>
-                        <div class="modal-stat-label">Vértices Alcanzados</div>
+                        <div class="modal-stat-label">Centros Alcanzados</div>
                         <div class="modal-stat-value">${entries.length}</div>
                     </div>
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
                         <div class="modal-stat-label">Complejidad</div>
-                        <div class="modal-stat-value">${data.complejidad}</div>
+                        <div class="modal-stat-value">${data.complejidad || 'O((V + E) log V)'}</div>
                     </div>
                 </div>
                 
                 <div class="modal-list" style="margin-top: 0;">
                     <div class="modal-list-title">Distancias Mínimas:</div>
-                    ${entries.slice(0, 5).map(([vertice, distancia]) => `
+                    ${entries.slice(0, 5).map(([vertice, distancia]) => {
+                        const verticeNum = parseInt(vertice);
+                        const centerInfo = indexToCenterName[verticeNum] || indexToCenterName[vertice] || null;
+                        const centerName = centerInfo?.name || `Centro ${vertice}`;
+                        return `
                         <div class="modal-list-item">
                             <div class="modal-list-item-number">${vertice}</div>
                             <div class="modal-list-item-content">
-                                Vértice ${vertice}: ${distancia.toFixed(2)}
+                                ${centerName}: $${distancia.toFixed(2)}
                             </div>
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                     ${entries.length > 5 ? `<div style="color: var(--text-secondary); margin-top: 1rem;">... y ${entries.length - 5} más</div>` : ''}
                 </div>
             </div>
@@ -1661,12 +1813,43 @@ function formatDijkstraResultModal(data) {
             <!-- Explicación a lo largo completo -->
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona con tus Datos Reales?
                 </div>
                 <div class="modal-explanation-text">
-                    El algoritmo de <strong>Dijkstra</strong> encuentra el camino más corto desde un vértice origen a todos los demás 
-                    vértices en un grafo con pesos no negativos. Utiliza una cola de prioridad para siempre explorar el vértice más cercano 
-                    primero. La complejidad es <strong>O((V + E) log V)</strong> donde V son vértices y E aristas.
+                    <p><strong>Problema que resuelve:</strong> Imagina que estás en ${sourceCenterName} y quieres saber cuál es la distancia más corta para llegar a cada uno de los otros centros. Es como usar Google Maps: le dices "quiero ir desde aquí" y te muestra el camino más rápido a cada destino.</p>
+                    
+                    ${data.fuente === 'neo4j-selected' || data.fuente === 'neo4j' ? 
+                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando datos reales de tu base de datos Neo4j (centros de distribución y rutas seleccionados).</p>' : 
+                    '<p style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-left: 3px solid #22c55e; margin-bottom: 1rem;"><i class="fas fa-keyboard"></i> <strong>Datos utilizados:</strong> Se están usando los datos que ingresaste manualmente.</p>'}
+                    
+                    <p><strong>Con tus datos:</strong></p>
+                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>📍 <strong>Punto de partida:</strong> ${sourceCenterName} (distancia = 0, porque ya estás ahí)</li>
+                        <li>🔄 <strong>Proceso del algoritmo:</strong>
+                            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                <li>1️⃣ Empieza desde ${sourceCenterName}</li>
+                                <li>2️⃣ Explora todos los centros a los que puedes llegar directamente desde ${sourceCenterName}</li>
+                                <li>3️⃣ Para cada centro nuevo, calcula la distancia total desde ${sourceCenterName}</li>
+                                <li>4️⃣ Siempre elige explorar primero el centro más cercano que aún no hayas visitado</li>
+                                <li>5️⃣ Repite hasta haber encontrado el camino más corto a todos los centros</li>
+                            </ul>
+                        </li>
+                        <li>📊 <strong>Resultados obtenidos:</strong>
+                            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                ${entries.slice(0, 5).map(([v, d]) => {
+                                    const vNum = parseInt(v);
+                                    const centerInfo = indexToCenterName[vNum] || indexToCenterName[v] || null;
+                                    const centerName = centerInfo?.name || `Centro ${v}`;
+                                    return `<li>Desde ${sourceCenterName} hasta ${centerName}: <strong>$${d.toFixed(2)}</strong>${vNum == sourceIndex ? ' (estás aquí)' : ''}</li>`;
+                                }).join('')}
+                                ${entries.length > 5 ? `<li>... y ${entries.length - 5} centros más</li>` : ''}
+                            </ul>
+                        </li>
+                    </ol>
+                    
+                    <p><strong>Ejemplo práctico:</strong> Es como usar Google Maps. Le dices "quiero ir desde mi casa" y te muestra la distancia más corta a cada lugar posible. Si hay varios caminos, siempre elige el más rápido.</p>
+                    
+                    <p><strong>Uso en logística:</strong> Esto es perfecto para planificar rutas de entrega, calcular tiempos de viaje, o decidir qué centro usar como base para distribuir mercancía a otros centros.</p>
                 </div>
             </div>
         </div>
@@ -1964,6 +2147,12 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.classList.add('active');
         const moduleName = tab.dataset.module;
         document.getElementById(`module-${moduleName}`).classList.add('active');
+        
+         // Si es el módulo de grafos, cargar datos de Neo4j automáticamente
+         if (moduleName === 'graphs') {
+             cargarDatosNeo4jKruskal();
+             cargarDatosNeo4jDijkstra();
+         }
     });
 });
 
@@ -2355,24 +2544,232 @@ function eliminarRutaDijkstra(from, idx) {
     actualizarListaRutasDijkstra();
 }
 
+// Almacenar datos cargados
+let kruskalCentersData = [];
+let kruskalRoutesData = [];
+let dijkstraCentersData = [];
+let dijkstraRoutesData = [];
+
+// Cargar datos de Neo4j para Kruskal usando el endpoint existente
+async function cargarDatosNeo4jKruskal() {
+    const centersLoading = document.getElementById('kruskal-centers-loading');
+    const routesLoading = document.getElementById('kruskal-routes-loading');
+    const centersContainer = document.getElementById('kruskal-centers-container');
+    const routesContainer = document.getElementById('kruskal-routes-container');
+    
+    // Mostrar spinners
+    centersLoading.style.display = 'flex';
+    routesLoading.style.display = 'flex';
+    centersContainer.innerHTML = '<div class="loading-placeholder">Cargando centros...</div>';
+    routesContainer.innerHTML = '<div class="loading-placeholder">Cargando rutas...</div>';
+    
+    try {
+        // Usar el endpoint existente que ya funciona
+        const response = await fetch(`${API_BASE}/neo4j/data`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error en respuesta de Neo4j:', errorText);
+            throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Verificar si hay error en la respuesta
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Extraer centros y rutas del objeto de respuesta
+        const centers = Array.isArray(data.centros) ? data.centros : [];
+        const routes = Array.isArray(data.rutas) ? data.rutas : [];
+        
+        console.log('DEBUG: Centros cargados:', centers.length);
+        console.log('DEBUG: Rutas cargadas:', routes.length);
+        console.log('DEBUG: Primera ruta ejemplo:', routes[0]);
+        if (routes.length > 0) {
+            console.log('DEBUG: Primera ruta fromCenter:', routes[0].fromCenter, 'toCenter:', routes[0].toCenter);
+        }
+        
+        // Guardar datos para uso posterior
+        kruskalCentersData = centers;
+        kruskalRoutesData = routes;
+        
+        // Crear cards seleccionables para centros
+        centersContainer.innerHTML = '';
+        if (centers.length === 0) {
+            centersContainer.innerHTML = '<div class="loading-placeholder">No hay centros disponibles</div>';
+        } else {
+            centers.forEach(center => {
+                const item = document.createElement('div');
+                item.className = 'selectable-item';
+                item.dataset.id = center.id || '';
+                item.textContent = center.name || 'Sin nombre';
+                item.onclick = () => toggleSelection(item, 'center');
+                centersContainer.appendChild(item);
+            });
+        }
+        
+        // Crear cards seleccionables para rutas
+        routesContainer.innerHTML = '';
+        if (routes.length === 0) {
+            routesContainer.innerHTML = '<div class="loading-placeholder">No hay rutas disponibles</div>';
+        } else {
+            routes.forEach(route => {
+                const item = document.createElement('div');
+                item.className = 'selectable-item';
+                item.dataset.id = route.id || '';
+                item.textContent = route.name || route.id || 'Sin nombre';
+                item.onclick = () => toggleSelection(item, 'route');
+                routesContainer.appendChild(item);
+            });
+        }
+        
+        // Seleccionar todos por defecto
+        centersContainer.querySelectorAll('.selectable-item').forEach(item => {
+            item.classList.add('selected');
+        });
+        routesContainer.querySelectorAll('.selectable-item').forEach(item => {
+            item.classList.add('selected');
+        });
+        
+    } catch (error) {
+        console.error('Error cargando datos de Neo4j:', error);
+        console.error('Detalles del error:', error.stack);
+        alert('Error al cargar datos de Neo4j: ' + error.message);
+        centersContainer.innerHTML = '<div class="loading-placeholder">Error al cargar centros</div>';
+        routesContainer.innerHTML = '<div class="loading-placeholder">Error al cargar rutas</div>';
+    } finally {
+        // Ocultar spinners
+        centersLoading.style.display = 'none';
+        routesLoading.style.display = 'none';
+    }
+}
+
+// Toggle selección de items
+function toggleSelection(item, type) {
+    item.classList.toggle('selected');
+}
+
+// Obtener IDs seleccionados
+function getSelectedCenters() {
+    const container = document.getElementById('kruskal-centers-container');
+    return Array.from(container.querySelectorAll('.selectable-item.selected'))
+        .map(item => item.dataset.id)
+        .filter(id => id);
+}
+
+function getSelectedRoutes() {
+    const container = document.getElementById('kruskal-routes-container');
+    return Array.from(container.querySelectorAll('.selectable-item.selected'))
+        .map(item => item.dataset.id)
+        .filter(id => id);
+}
+
 async function calcularKruskal() {
     showLoading();
     try {
-        const vertices = parseInt(document.getElementById('kruskal-vertices').value) || 4;
+        // Obtener selecciones de los items seleccionables
+        const selectedCenterIds = getSelectedCenters();
+        const selectedRouteIds = getSelectedRoutes();
         
-        if (kruskalEdges.length === 0) {
-            // Usar datos de ejemplo si no hay rutas
-            kruskalEdges = [
-                { from: 0, to: 1, weight: 10 },
-                { from: 1, to: 2, weight: 15 },
-                { from: 2, to: 3, weight: 4 },
-                { from: 0, to: 3, weight: 5 }
-            ];
+        if (selectedCenterIds.length === 0) {
+            alert('Por favor selecciona al menos un centro de distribución');
+            hideLoading();
+            return;
         }
         
+        if (selectedRouteIds.length === 0) {
+            alert('Por favor selecciona al menos una ruta');
+            hideLoading();
+            return;
+        }
+        
+        // Usar los datos ya cargados
+        if (kruskalCentersData.length === 0 || kruskalRoutesData.length === 0) {
+            // Si no hay datos cargados, cargarlos ahora
+            await cargarDatosNeo4jKruskal();
+        }
+        
+        // Filtrar centros y rutas seleccionados
+        const selectedCenters = kruskalCentersData.filter(c => selectedCenterIds.includes(c.id));
+        const selectedRoutes = kruskalRoutesData.filter(r => selectedRouteIds.includes(r.id));
+        
+        // Crear mapa de ID de centro a índice
+        const centerToIndex = new Map();
+        // Crear mapa inverso de índice a información del centro
+        const indexToCenter = new Map();
+        selectedCenters.forEach((center, index) => {
+            centerToIndex.set(center.id, index);
+            indexToCenter.set(index, {
+                id: center.id,
+                name: center.name || center.id
+            });
+        });
+        
+        // Construir aristas del grafo
+        const edges = [];
+        const selectedCenterIdSet = new Set(selectedCenterIds);
+        
+        selectedRoutes.forEach(route => {
+            const fromId = route.fromCenter || route.fromCenterId;
+            const toId = route.toCenter || route.toCenterId;
+            
+            // Solo agregar si ambos centros están seleccionados
+            if (fromId && toId && selectedCenterIdSet.has(fromId) && selectedCenterIdSet.has(toId)) {
+                if (centerToIndex.has(fromId) && centerToIndex.has(toId)) {
+                    const fromIndex = centerToIndex.get(fromId);
+                    const toIndex = centerToIndex.get(toId);
+                    const weight = route.cost || route.distance || 0;
+                    
+                    // Evitar aristas duplicadas (grafo no dirigido)
+                    const edgeExists = edges.some(e => 
+                        (e.from === fromIndex && e.to === toIndex) || 
+                        (e.from === toIndex && e.to === fromIndex)
+                    );
+                    
+                    if (!edgeExists && fromIndex !== toIndex) {
+                        edges.push({
+                            from: fromIndex,
+                            to: toIndex,
+                            weight: weight
+                        });
+                    }
+                }
+            }
+        });
+        
+        console.log('DEBUG: Centros seleccionados IDs:', selectedCenterIds);
+        console.log('DEBUG: Rutas procesadas:', selectedRoutes.length);
+        console.log('DEBUG: Primera ruta seleccionada:', selectedRoutes[0]);
+        if (selectedRoutes.length > 0) {
+            console.log('DEBUG: Primera ruta fromCenter:', selectedRoutes[0].fromCenter, 'toCenter:', selectedRoutes[0].toCenter);
+        }
+        const rutasValidas = selectedRoutes.filter(r => {
+            const fromId = r.fromCenter || r.fromCenterId;
+            const toId = r.toCenter || r.toCenterId;
+            return fromId && toId && selectedCenterIdSet.has(fromId) && selectedCenterIdSet.has(toId);
+        });
+        console.log('DEBUG: Rutas con fromCenter/toCenter válidos:', rutasValidas.length);
+        if (rutasValidas.length > 0) {
+            console.log('DEBUG: Ejemplo de ruta válida:', rutasValidas[0]);
+        }
+        
+        if (edges.length === 0) {
+            alert('No hay rutas que conecten los centros seleccionados. Por favor selecciona rutas que conecten los centros elegidos.\n\nCentros seleccionados: ' + selectedCenters.length + '\nRutas seleccionadas: ' + selectedRoutes.length);
+            hideLoading();
+            return;
+        }
+        
+        console.log('Centros seleccionados:', selectedCenters.length);
+        console.log('Rutas seleccionadas:', selectedRoutes.length);
+        console.log('Aristas construidas:', edges.length);
+        console.log('Request:', { vertices: selectedCenters.length, edges: edges });
+        
+        // Construir request para el endpoint existente
         const request = {
-            vertices: vertices,
-            edges: kruskalEdges
+            vertices: selectedCenters.length,
+            edges: edges
         };
         
         const response = await fetch(`${API_BASE}/graphs/kruskal/mst`, {
@@ -2381,56 +2778,378 @@ async function calcularKruskal() {
             body: JSON.stringify(request)
         });
         
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error en respuesta del servidor:', errorText);
+            throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
+        console.log('Respuesta del servidor:', data);
+        
+        // Verificar si hay error en la respuesta
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Agregar información sobre la fuente
+        data.fuente = 'neo4j-selected';
+        data.centrosSeleccionados = selectedCenters.length;
+        data.rutasSeleccionadas = selectedRoutes.length;
+        
+        // Agregar mapeo de índices a centros para mostrar nombres reales
+        data.indexToCenter = Object.fromEntries(indexToCenter);
+        
+        // Convertir índices a nombres de centros en las aristas del MST
+        if (data.mst && Array.isArray(data.mst)) {
+            data.mst = data.mst.map(edge => ({
+                ...edge,
+                fromName: indexToCenter.get(edge.from)?.name || `Centro ${edge.from}`,
+                toName: indexToCenter.get(edge.to)?.name || `Centro ${edge.to}`,
+                fromId: indexToCenter.get(edge.from)?.id || `DC${edge.from}`,
+                toId: indexToCenter.get(edge.to)?.id || `DC${edge.to}`
+            }));
+        }
+        
+        // Mostrar resultado en el contenedor
+        const resultContainer = document.getElementById('kruskal-result');
+        if (resultContainer) {
+            resultContainer.innerHTML = formatMSTResult(data, 'Kruskal');
+        }
+        
+        // También mostrar en modal
         showResult('kruskal-result', data, true);
     } catch (error) {
-        showResult('kruskal-result', { error: 'Error al calcular MST: ' + error.message });
+        console.error('Error completo:', error);
+        const errorMessage = error.message || 'Error desconocido al calcular MST';
+        alert('Error: ' + errorMessage);
+        
+        const resultContainer = document.getElementById('kruskal-result');
+        if (resultContainer) {
+            resultContainer.innerHTML = `<div class="error-box">Error: ${errorMessage}</div>`;
+        }
     } finally {
         hideLoading();
     }
 }
 
+// Cargar datos de Neo4j para Dijkstra
+async function cargarDatosNeo4jDijkstra() {
+    const centersLoading = document.getElementById('dijkstra-centers-loading');
+    const routesLoading = document.getElementById('dijkstra-routes-loading');
+    const centersContainer = document.getElementById('dijkstra-centers-container');
+    const routesContainer = document.getElementById('dijkstra-routes-container');
+    const sourceSelect = document.getElementById('dijkstra-source-select');
+    
+    if (!centersContainer || !routesContainer) return;
+    
+    // Mostrar spinners
+    if (centersLoading) centersLoading.style.display = 'flex';
+    if (routesLoading) routesLoading.style.display = 'flex';
+    centersContainer.innerHTML = '<div class="loading-placeholder">Cargando centros...</div>';
+    routesContainer.innerHTML = '<div class="loading-placeholder">Cargando rutas...</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE}/neo4j/data`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error en respuesta de Neo4j:', errorText);
+            throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        const centers = Array.isArray(data.centros) ? data.centros : [];
+        const routes = Array.isArray(data.rutas) ? data.rutas : [];
+        
+        console.log('DEBUG Dijkstra: Centros cargados:', centers.length);
+        console.log('DEBUG Dijkstra: Rutas cargadas:', routes.length);
+        
+        // Guardar datos
+        dijkstraCentersData = centers;
+        dijkstraRoutesData = routes;
+        
+        // Crear cards seleccionables para centros
+        centersContainer.innerHTML = '';
+        if (centers.length === 0) {
+            centersContainer.innerHTML = '<div class="loading-placeholder">No hay centros disponibles</div>';
+        } else {
+            centers.forEach(center => {
+                const item = document.createElement('div');
+                item.className = 'selectable-item selected';
+                item.dataset.id = center.id || '';
+                item.textContent = center.name || center.id || 'Sin nombre';
+                item.onclick = () => toggleSelectionDijkstra(item, 'center');
+                centersContainer.appendChild(item);
+            });
+        }
+        
+        // Crear cards seleccionables para rutas
+        routesContainer.innerHTML = '';
+        if (routes.length === 0) {
+            routesContainer.innerHTML = '<div class="loading-placeholder">No hay rutas disponibles</div>';
+        } else {
+            routes.forEach(route => {
+                const item = document.createElement('div');
+                item.className = 'selectable-item selected';
+                item.dataset.id = route.id || '';
+                item.textContent = route.name || route.id || 'Sin nombre';
+                item.onclick = () => toggleSelectionDijkstra(item, 'route');
+                routesContainer.appendChild(item);
+            });
+        }
+        
+        // Actualizar select de origen
+        if (sourceSelect) {
+            sourceSelect.innerHTML = '<option value="">Selecciona un centro de origen</option>';
+            centers.forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.id || '';
+                option.textContent = center.name || center.id || 'Sin nombre';
+                sourceSelect.appendChild(option);
+            });
+            // Seleccionar el primer centro por defecto
+            if (centers.length > 0) {
+                sourceSelect.value = centers[0].id || '';
+            }
+        }
+        
+        // Ocultar spinners
+        if (centersLoading) centersLoading.style.display = 'none';
+        if (routesLoading) routesLoading.style.display = 'none';
+        
+    } catch (error) {
+        console.error('Error al cargar datos de Neo4j para Dijkstra:', error);
+        centersContainer.innerHTML = `<div class="error-message">Error al cargar datos: ${error.message}</div>`;
+        routesContainer.innerHTML = `<div class="error-message">Error al cargar datos: ${error.message}</div>`;
+        if (centersLoading) centersLoading.style.display = 'none';
+        if (routesLoading) routesLoading.style.display = 'none';
+    }
+}
+
+// Toggle selección para Dijkstra
+function toggleSelectionDijkstra(item, type) {
+    item.classList.toggle('selected');
+    
+    // Actualizar select de origen si es necesario
+    if (type === 'center') {
+        const sourceSelect = document.getElementById('dijkstra-source-select');
+        if (sourceSelect) {
+            const centerId = item.dataset.id;
+            const option = sourceSelect.querySelector(`option[value="${centerId}"]`);
+            if (option) {
+                if (item.classList.contains('selected')) {
+                    option.disabled = false;
+                } else {
+                    option.disabled = true;
+                    // Si el origen seleccionado fue deseleccionado, limpiar selección
+                    if (sourceSelect.value === centerId) {
+                        sourceSelect.value = '';
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Obtener centros seleccionados para Dijkstra
+function getSelectedDijkstraCenters() {
+    const container = document.getElementById('dijkstra-centers-container');
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.selectable-item.selected'))
+        .map(item => item.dataset.id)
+        .filter(id => id);
+}
+
+// Obtener rutas seleccionadas para Dijkstra
+function getSelectedDijkstraRoutes() {
+    const container = document.getElementById('dijkstra-routes-container');
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.selectable-item.selected'))
+        .map(item => item.dataset.id)
+        .filter(id => id);
+}
+
 async function calcularDijkstra() {
     showLoading();
     try {
-        const vertices = parseInt(document.getElementById('dijkstra-vertices').value) || 5;
-        const source = parseInt(document.getElementById('dijkstra-source').value) || 0;
+        // Obtener selecciones
+        const selectedCenterIds = getSelectedDijkstraCenters();
+        const selectedRouteIds = getSelectedDijkstraRoutes();
+        const sourceCenterId = document.getElementById('dijkstra-source-select')?.value || '';
         
-        if (Object.keys(dijkstraEdges).length === 0) {
-            // Usar datos de ejemplo
-            dijkstraEdges = {
-                0: [[1, 4], [2, 1]],
-                1: [[3, 2]],
-                2: [[1, 2], [3, 5]],
-                3: [[4, 3]],
-                4: []
-            };
+        if (selectedCenterIds.length === 0) {
+            alert('Por favor, selecciona al menos un centro');
+            hideLoading();
+            return;
         }
         
-        // Convertir a formato numérico
-        const convertedAdjList = {};
-        for (const [key, value] of Object.entries(dijkstraEdges)) {
-            convertedAdjList[parseInt(key)] = value;
+        if (!sourceCenterId) {
+            alert('Por favor, selecciona un centro de origen');
+            hideLoading();
+            return;
         }
         
-        const request = {
-            vertices,
-            source,
-            adjacencyList: convertedAdjList
-        };
+        if (!selectedCenterIds.includes(sourceCenterId)) {
+            alert('El centro de origen debe estar seleccionado en la lista de centros');
+            hideLoading();
+            return;
+        }
         
-        const response = await fetch(`${API_BASE}/graphs/dijkstra/distances`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request)
+        // Si no hay datos cargados, cargarlos primero
+        if (dijkstraCentersData.length === 0 || dijkstraRoutesData.length === 0) {
+            await cargarDatosNeo4jDijkstra();
+        }
+        
+        // Filtrar rutas que conecten los centros seleccionados
+        const validRoutes = dijkstraRoutesData.filter(route => {
+            const fromCenter = route.fromCenter;
+            const toCenter = route.toCenter;
+            return fromCenter && toCenter && 
+                   fromCenter !== 'N/A' && toCenter !== 'N/A' &&
+                   selectedCenterIds.includes(fromCenter) && 
+                   selectedCenterIds.includes(toCenter) &&
+                   selectedRouteIds.includes(route.id);
         });
         
+        console.log('DEBUG Dijkstra: Centros seleccionados:', selectedCenterIds.length);
+        console.log('DEBUG Dijkstra: Rutas válidas:', validRoutes.length);
+        
+        if (validRoutes.length === 0) {
+            alert('No hay rutas que conecten los centros seleccionados. Por favor, selecciona más rutas o centros.');
+            hideLoading();
+            return;
+        }
+        
+        // Construir lista de adyacencia
+        const selectedCenters = dijkstraCentersData.filter(c => selectedCenterIds.includes(c.id));
+        const selectedRoutes = dijkstraRoutesData.filter(r => selectedRouteIds.includes(r.id));
+        
+        // Crear mapa de ID de centro a índice
+        const centerToIndex = new Map();
+        const indexToCenter = new Map();
+        selectedCenters.forEach((center, index) => {
+            centerToIndex.set(center.id, index);
+            indexToCenter.set(index, {
+                id: center.id,
+                name: center.name || center.id
+            });
+        });
+        
+        // Construir lista de adyacencia
+        const adjacencyList = {};
+        const selectedCenterIdSet = new Set(selectedCenterIds);
+        
+        selectedRoutes.forEach(route => {
+            const fromId = route.fromCenter || route.fromCenterId;
+            const toId = route.toCenter || route.toCenterId;
+            
+            if (fromId && toId && selectedCenterIdSet.has(fromId) && selectedCenterIdSet.has(toId)) {
+                if (centerToIndex.has(fromId) && centerToIndex.has(toId)) {
+                    const fromIndex = centerToIndex.get(fromId);
+                    const toIndex = centerToIndex.get(toId);
+                    const weight = route.cost || route.distance || 0;
+                    
+                    if (!adjacencyList[fromIndex]) {
+                        adjacencyList[fromIndex] = [];
+                    }
+                    adjacencyList[fromIndex].push([toIndex, weight]);
+                }
+            }
+        });
+        
+        // Obtener índice del centro origen
+        const source = centerToIndex.get(sourceCenterId);
+        if (source === undefined) {
+            alert('El centro de origen no está en la lista de centros seleccionados');
+            hideLoading();
+            return;
+        }
+        
+        // Llamar al endpoint con selección
+        const response = await fetch(`${API_BASE}/graphs/dijkstra/distances/selected`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                selectedCenters: selectedCenterIds,
+                selectedRoutes: selectedRouteIds,
+                sourceCenterId: sourceCenterId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Error HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
+        
+        console.log('DEBUG Dijkstra: Respuesta del servidor:', data);
+        console.log('DEBUG Dijkstra: source recibido:', data.source);
+        console.log('DEBUG Dijkstra: selectedCenters:', selectedCenters.length);
+        console.log('DEBUG Dijkstra: indexToCenter Map:', Array.from(indexToCenter.entries()));
+        
+        // Agregar información de centros para la visualización
+        data.centers = selectedCenters;
+        data.routes = selectedRoutes;
+        data.indexToCenter = Object.fromEntries(indexToCenter);
+        data.sourceCenterId = sourceCenterId;
+        
+        // Agregar nombre del centro origen para mostrar en el modal
+        const sourceCenter = selectedCenters.find(c => c.id === sourceCenterId);
+        if (sourceCenter) {
+            data.sourceCenterName = sourceCenter.name || sourceCenter.id;
+        }
+        
+        // Asegurar que source sea un número
+        if (data.source !== undefined && data.source !== null) {
+            data.source = parseInt(data.source);
+        } else {
+            data.source = source;
+        }
+        
+        console.log('DEBUG Dijkstra: data después de procesar:', {
+            source: data.source,
+            sourceCenterName: data.sourceCenterName,
+            indexToCenter: data.indexToCenter,
+            centers: data.centers.length
+        });
+        
+        // Construir aristas para visualización
+        const edges = [];
+        selectedRoutes.forEach(route => {
+            const fromId = route.fromCenter || route.fromCenterId;
+            const toId = route.toCenter || route.toCenterId;
+            if (fromId && toId && centerToIndex.has(fromId) && centerToIndex.has(toId)) {
+                const fromIndex = centerToIndex.get(fromId);
+                const toIndex = centerToIndex.get(toId);
+                const weight = route.cost || route.distance || 0;
+                edges.push({ from: fromIndex, to: toIndex, weight: weight });
+            }
+        });
+        data.edges = edges;
+        
         showResult('dijkstra-result', data, true);
     } catch (error) {
-        showResult('dijkstra-result', { error: 'Error al calcular Dijkstra: ' + error.message });
-    } finally {
+        console.error('Error al calcular Dijkstra:', error);
         hideLoading();
+        // Mostrar error directamente sin abrir el modal
+        const resultDiv = document.getElementById('dijkstra-result');
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="error-message" style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    <strong>Error:</strong> ${error.message}
+                    <br><br>
+                    <small>Por favor, asegúrate de que el servidor esté corriendo y reiniciado con los últimos cambios.</small>
+                </div>
+            `;
+        }
     }
 }
 

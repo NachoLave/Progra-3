@@ -103,23 +103,52 @@ public class Neo4jTestController {
                 return map;
             }).collect(Collectors.toList()));
             
-            result.put("rutas", routes.stream().map(r -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", r.getId() != null ? r.getId() : "");
-                map.put("name", r.getName() != null ? r.getName() : "");
-                map.put("distance", r.getDistance() != null ? r.getDistance() : 0.0);
-                map.put("cost", r.getCost() != null ? r.getCost() : 0.0);
+            // Obtener rutas con sus relaciones usando consultas individuales
+            // La estructura en Neo4j es: (dc1)-[:CONNECTED_TO]->(r)-[:CONNECTED_TO]->(dc2)
+            List<Route> allRoutes = routeRepository.findAll();
+            List<Map<String, Object>> rutasConRelaciones = new java.util.ArrayList<>();
+            
+            for (Route route : allRoutes) {
+                Map<String, Object> routeMap = new HashMap<>();
+                routeMap.put("id", route.getId() != null ? route.getId() : "");
+                routeMap.put("name", route.getName() != null ? route.getName() : "");
+                routeMap.put("distance", route.getDistance() != null ? route.getDistance() : 0.0);
+                routeMap.put("cost", route.getCost() != null ? route.getCost() : 0.0);
+                
+                // Obtener los centros usando consultas individuales
+                String fromCenterId = "N/A";
+                String toCenterId = "N/A";
+                
                 try {
-                    DistributionCenter from = r.getFromCenter();
-                    DistributionCenter to = r.getToCenter();
-                    map.put("fromCenter", from != null && from.getId() != null ? from.getId() : "N/A");
-                    map.put("toCenter", to != null && to.getId() != null ? to.getId() : "N/A");
+                    // Consulta para obtener el centro origen (el que tiene relación CONNECTED_TO hacia la ruta)
+                    String fromCenterResult = routeRepository.findFromCenter(route.getId());
+                    System.out.println("DEBUG: findFromCenter para " + route.getId() + " devolvió: " + fromCenterResult);
+                    if (fromCenterResult != null && !fromCenterResult.isEmpty()) {
+                        fromCenterId = fromCenterResult;
+                    }
+                    
+                    // Consulta para obtener el centro destino (el que tiene relación CONNECTED_TO desde la ruta)
+                    String toCenterResult = routeRepository.findToCenter(route.getId());
+                    System.out.println("DEBUG: findToCenter para " + route.getId() + " devolvió: " + toCenterResult);
+                    if (toCenterResult != null && !toCenterResult.isEmpty()) {
+                        toCenterId = toCenterResult;
+                    }
                 } catch (Exception e) {
-                    map.put("fromCenter", "N/A");
-                    map.put("toCenter", "N/A");
+                    System.out.println("DEBUG: Error obteniendo centros para ruta " + route.getId() + ": " + e.getMessage());
+                    e.printStackTrace();
                 }
-                return map;
-            }).collect(Collectors.toList()));
+                
+                routeMap.put("fromCenter", fromCenterId);
+                routeMap.put("toCenter", toCenterId);
+                
+                System.out.println("DEBUG: Ruta procesada - ID: " + routeMap.get("id") + 
+                    ", From: " + routeMap.get("fromCenter") + ", To: " + routeMap.get("toCenter"));
+                
+                rutasConRelaciones.add(routeMap);
+            }
+            
+            System.out.println("DEBUG: Total rutas procesadas: " + rutasConRelaciones.size());
+            result.put("rutas", rutasConRelaciones);
             
             result.put("camiones", trucks.stream().map(t -> {
                 Map<String, Object> map = new HashMap<>();
