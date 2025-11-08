@@ -42,16 +42,20 @@ public class GreedyController {
         long startTime = System.nanoTime();
         Map<Integer, Integer> distribucion;
         String fuente;
+        List<Integer> tamanosDisponibles;
         
         if (request != null && request.getAvailableSizes() != null && !request.getAvailableSizes().isEmpty()) {
+            tamanosDisponibles = request.getAvailableSizes();
             distribucion = greedyService.distribuirCombustibleGreedy(
                     request.getRequiredAmount(), 
-                    request.getAvailableSizes()
+                    tamanosDisponibles
             );
             fuente = "request";
         } else {
             int requiredAmount = request != null ? request.getRequiredAmount() : greedyService.obtenerCombustibleTotalDisponible() / 2;
             distribucion = greedyService.distribuirCombustibleDesdeNeo4j(requiredAmount);
+            // Obtener los tamaños disponibles de la distribución para el caso Neo4j
+            tamanosDisponibles = distribucion.keySet().stream().sorted((a, b) -> b - a).toList();
             fuente = "neo4j";
         }
         long endTime = System.nanoTime();
@@ -74,6 +78,7 @@ public class GreedyController {
                                 greedyService.obtenerCombustibleTotalDisponible() / 2;
         response.put("cantidadRequerida", cantidadRequerida);
         response.put("diferencia", totalDistribuido - cantidadRequerida);
+        response.put("tamanosDisponibles", tamanosDisponibles); // ✅ Agregar TODOS los tamaños disponibles
         response.put("algoritmo", "Greedy (Cambio de Monedas)");
         response.put("complejidad", "O(n)");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
@@ -139,6 +144,7 @@ public class GreedyController {
         
         Map<String, Object> response = new HashMap<>();
         response.put("distribucion", distribucion);
+        response.put("proyectos", proyectos); // Enviar los proyectos para la visualización
         response.put("presupuestoTotal", presupuestoTotal);
         response.put("presupuestoAsignado", totalAsignado);
         response.put("presupuestoRestante", presupuestoTotal - totalAsignado);

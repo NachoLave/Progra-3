@@ -51,14 +51,15 @@ public class RecursiveMetricsController {
         long startTime = System.nanoTime();
         double costoTotal;
         int numeroTramos;
+        double[] costsArray = null;
         
         if (request != null && request.getCosts() != null && !request.getCosts().isEmpty()) {
             // Usar datos del request
-            double[] costs = request.getCosts().stream()
+            costsArray = request.getCosts().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            costoTotal = recursiveMetricsService.calcularCostoTotalRecursivo(costs, 0);
-            numeroTramos = costs.length;
+            costoTotal = recursiveMetricsService.calcularCostoTotalRecursivo(costsArray, 0);
+            numeroTramos = costsArray.length;
         } else {
             // Obtener desde Neo4j
             costoTotal = recursiveMetricsService.obtenerRutasYCalcularCostoTotalRecursivo();
@@ -75,6 +76,11 @@ public class RecursiveMetricsController {
         response.put("tiempoEjecucionNanosegundos", executionTime);
         response.put("numeroTramos", numeroTramos);
         response.put("fuente", request != null && request.getCosts() != null && !request.getCosts().isEmpty() ? "request" : "neo4j");
+        
+        // Agregar los costos individuales si están disponibles
+        if (costsArray != null) {
+            response.put("costosIndividuales", costsArray);
+        }
         
         return ResponseEntity.ok(response);
     }
@@ -103,13 +109,14 @@ public class RecursiveMetricsController {
         long startTime = System.nanoTime();
         double distanciaTotal;
         int numeroTramos;
+        double[] distancesArray = null;
         
         if (request != null && request.getDistances() != null && !request.getDistances().isEmpty()) {
-            double[] distances = request.getDistances().stream()
+            distancesArray = request.getDistances().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            distanciaTotal = recursiveMetricsService.calcularDistanciaTotalRecursivo(distances, 0);
-            numeroTramos = distances.length;
+            distanciaTotal = recursiveMetricsService.calcularDistanciaTotalRecursivo(distancesArray, 0);
+            numeroTramos = distancesArray.length;
         } else {
             distanciaTotal = recursiveMetricsService.obtenerRutasYCalcularDistanciaTotalRecursivo();
             numeroTramos = recursiveMetricsService.getNumeroRutas();
@@ -125,6 +132,11 @@ public class RecursiveMetricsController {
         response.put("tiempoEjecucionNanosegundos", executionTime);
         response.put("numeroTramos", numeroTramos);
         response.put("fuente", request != null && request.getDistances() != null && !request.getDistances().isEmpty() ? "request" : "neo4j");
+        
+        // Agregar las distancias individuales si están disponibles
+        if (distancesArray != null) {
+            response.put("distanciasIndividuales", distancesArray);
+        }
         
         return ResponseEntity.ok(response);
     }
@@ -216,22 +228,24 @@ public class RecursiveMetricsController {
         
         RecursiveMetricsService.RouteMetrics metrics;
         String fuente;
+        double[] costsArray = null;
+        double[] distancesArray = null;
         
         if (request != null && request.getCosts() != null && !request.getCosts().isEmpty()) {
-            double[] costs = request.getCosts().stream()
+            costsArray = request.getCosts().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
-            double[] distances = request.getDistances().stream()
+            distancesArray = request.getDistances().stream()
                     .mapToDouble(Double::doubleValue)
                     .toArray();
             
-            if (costs.length != distances.length) {
+            if (costsArray.length != distancesArray.length) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Los arrays de costos y distancias deben tener la misma longitud");
                 return ResponseEntity.badRequest().body(error);
             }
             
-            metrics = recursiveMetricsService.calcularMetricasCombinadas(costs, distances, 0);
+            metrics = recursiveMetricsService.calcularMetricasCombinadas(costsArray, distancesArray, 0);
             fuente = "request";
         } else {
             metrics = recursiveMetricsService.obtenerRutasYCalcularMetricasCombinadas();
@@ -245,6 +259,12 @@ public class RecursiveMetricsController {
         response.put("metodo", "recursivo");
         response.put("complejidad", "O(n)");
         response.put("fuente", fuente);
+        
+        // Agregar los arrays individuales si están disponibles
+        if (costsArray != null && distancesArray != null) {
+            response.put("costosIndividuales", costsArray);
+            response.put("distanciasIndividuales", distancesArray);
+        }
         
         return ResponseEntity.ok(response);
     }

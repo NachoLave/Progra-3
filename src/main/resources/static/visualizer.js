@@ -252,41 +252,107 @@ class AlgorithmVisualizer {
         let used = {};
         sizes.sort((a, b) => b - a); // Ordenar descendente
         
-        let html = `
-            <div class="greedy-initial">
+        // Calcular qué bidones se van a usar
+        let usageOrder = [];
+        let tempRemaining = required;
+        sizes.forEach((size, index) => {
+            const quantity = Math.floor(tempRemaining / size);
+            if (quantity > 0) {
+                used[size] = quantity;
+                tempRemaining = tempRemaining % size;
+                usageOrder.push({ size, quantity, order: usageOrder.length + 1 });
+            }
+        });
+        
+        // Crear visualización de camiones/bidones
+        let trucksHtml = `
+            <div class="trucks-visualization">
+                <div class="trucks-header">
+                    <h4><i class="fas fa-gas-pump"></i> Bidones Disponibles</h4>
+                    <div class="target-amount">Objetivo: <strong>${required}L</strong></div>
+                </div>
+                <div class="trucks-container">
+        `;
+        
+        // Mostrar todos los bidones disponibles
+        sizes.forEach((size, index) => {
+            const isUsed = used[size] !== undefined;
+            const quantity = used[size] || 0;
+            const orderInfo = usageOrder.find(u => u.size === size);
+            const order = orderInfo ? orderInfo.order : 0;
+            
+            trucksHtml += `
+                <div class="truck-item ${isUsed ? 'truck-used' : 'truck-unused'}" style="animation-delay: ${index * 0.15}s" data-order="${order}">
+                    <div class="truck-icon">
+                        <i class="fas fa-gas-pump"></i>
+                    </div>
+                    <div class="truck-capacity">
+                        <div class="capacity-label">Capacidad</div>
+                        <div class="capacity-value">${size}L</div>
+                    </div>
+                    ${isUsed ? `
+                        <div class="truck-selection-badge">
+                            <i class="fas fa-check-circle"></i> Seleccionado
+                        </div>
+                        <div class="truck-usage">
+                            <div class="usage-bar">
+                                <div class="usage-fill" style="width: 100%; animation-delay: ${(order - 1) * 0.5}s"></div>
+                            </div>
+                            <div class="usage-text">Usado: ${quantity} × ${size}L = ${quantity * size}L</div>
+                        </div>
+                        <div class="truck-order-badge">Paso ${order}</div>
+                    ` : `
+                        <div class="truck-not-used">
+                            <i class="fas fa-times-circle"></i> No usado
+                        </div>
+                    `}
+                </div>
+            `;
+        });
+        
+        trucksHtml += `
+                </div>
+            </div>
+        `;
+        
+        // Ahora el resumen paso a paso
+        let html = trucksHtml + `
+            <div class="greedy-initial" style="margin-top: 2rem;">
                 <div class="greedy-target">
-                    <strong>Objetivo:</strong> ${required} litros
+                    <strong>Algoritmo Greedy:</strong> Seleccionar siempre el bidón más grande disponible
                 </div>
                 <div class="greedy-sizes">
-                    <strong>Bidones disponibles:</strong> ${sizes.join('L, ')}L
+                    <strong>Bidones disponibles (ordenados):</strong> ${sizes.join('L, ')}L
                 </div>
             </div>
             <div class="greedy-steps">
         `;
 
+        let stepNum = 1;
         sizes.forEach((size, index) => {
             if (remaining <= 0) return;
             
             const quantity = Math.floor(remaining / size);
             if (quantity > 0) {
-                used[size] = quantity;
+                const previousRemaining = remaining + size * quantity;
                 remaining = remaining % size;
                 
                 html += `
-                    <div class="greedy-step">
-                        <div class="step-number">Paso ${index + 1}</div>
+                    <div class="greedy-step" style="animation-delay: ${stepNum * 0.2}s">
+                        <div class="step-number">Paso ${stepNum}</div>
                         <div class="step-action">
                             <i class="fas fa-check-circle"></i>
                             Elegir bidón de <strong>${size}L</strong>
                         </div>
                         <div class="step-calculation">
-                            ${remaining + size * quantity}L - ${quantity} × ${size}L = ${remaining}L restantes
+                            ${previousRemaining}L ÷ ${size}L = ${quantity} bidón${quantity > 1 ? 'es' : ''} (resto: ${remaining}L)
                         </div>
                         <div class="step-result">
-                            Usar: ${quantity} bidón${quantity > 1 ? 'es' : ''} de ${size}L
+                            ✓ Usar: ${quantity} bidón${quantity > 1 ? 'es' : ''} de ${size}L = ${quantity * size}L
                         </div>
                     </div>
                 `;
+                stepNum++;
             }
         });
 
@@ -294,7 +360,7 @@ class AlgorithmVisualizer {
             </div>
             <div class="greedy-final">
                 <div class="final-summary">
-                    <strong>Resultado:</strong> ${Object.entries(used).map(([s, q]) => `${q}×${s}L`).join(' + ')} = ${required - remaining}L
+                    <i class="fas fa-check-circle"></i> <strong>Distribución Completada:</strong> ${Object.entries(used).map(([s, q]) => `${q}×${s}L`).join(' + ')} = ${required}L
                 </div>
             </div>
         `;
@@ -441,8 +507,143 @@ class AlgorithmVisualizer {
         html += '</tbody></table>';
         container.innerHTML = html;
     }
+
+    // Animar distribución de presupuesto en proyectos
+    animateBudgetProjects(container, data) {
+        if (!container) return;
+
+        const { presupuestoTotal, proyectos, distribucion } = data;
+        
+        // Calcular ratios y ordenar proyectos
+        const projectsWithRatio = proyectos.map(p => ({
+            ...p,
+            ratio: (p.beneficio / p.costo).toFixed(2),
+            assigned: distribucion[p.nombre] || 0,
+            percentage: distribucion[p.nombre] ? ((distribucion[p.nombre] / p.costo) * 100).toFixed(0) : 0
+        }));
+        
+        // Ordenar por ratio descendente (como Greedy)
+        projectsWithRatio.sort((a, b) => b.ratio - a.ratio);
+        
+        // Determinar orden de selección
+        let order = 0;
+        projectsWithRatio.forEach(p => {
+            if (p.assigned > 0) {
+                order++;
+                p.order = order;
+            }
+        });
+
+        let html = `
+            <div class="projects-visualization">
+                <div class="projects-header">
+                    <h4><i class="fas fa-wallet"></i> Distribución de Presupuesto por Proyectos</h4>
+                    <div class="budget-total">
+                        Presupuesto Total: <strong>$${presupuestoTotal.toFixed(2)}</strong>
+                    </div>
+                </div>
+                <div class="projects-container">
+        `;
+
+        projectsWithRatio.forEach((project, index) => {
+            const isFunded = project.assigned > 0;
+            const isPartial = project.percentage > 0 && project.percentage < 100;
+            const isFull = project.percentage >= 100;
+            
+            let fundingClass = '';
+            let fundingLabel = '';
+            
+            if (isFull) {
+                fundingClass = 'project-funded';
+                fundingLabel = '✅ Financiado Completo';
+            } else if (isPartial) {
+                fundingClass = 'project-partial';
+                fundingLabel = '⚠️ Financiado Parcial';
+            } else {
+                fundingClass = 'project-not-funded';
+                fundingLabel = '❌ Sin Financiamiento';
+            }
+
+            html += `
+                <div class="project-item ${fundingClass}" style="animation-delay: ${index * 0.15}s">
+                    <div class="project-header">
+                        <div class="project-name">
+                            <i class="fas fa-folder-open"></i>
+                            ${project.nombre}
+                        </div>
+                        ${isFunded ? `<div class="project-order-badge">${project.order}</div>` : ''}
+                    </div>
+                    
+                    <div class="project-stats">
+                        <div class="project-stat">
+                            <div class="project-stat-label">Costo</div>
+                            <div class="project-stat-value">$${project.costo}</div>
+                        </div>
+                        <div class="project-stat">
+                            <div class="project-stat-label">Beneficio</div>
+                            <div class="project-stat-value highlight">$${project.beneficio}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="project-ratio-badge">
+                        <i class="fas fa-chart-line"></i>
+                        Ratio: ${project.ratio}
+                    </div>
+                    
+                    ${isFunded ? `
+                        <div class="project-progress">
+                            <div class="project-progress-label">
+                                <span>Financiamiento</span>
+                                <span class="project-progress-percentage ${isFull ? 'full' : 'partial'}">
+                                    ${project.percentage}%
+                                </span>
+                            </div>
+                            <div class="project-progress-bar">
+                                <div class="project-progress-fill ${isPartial ? 'partial' : ''}" 
+                                     style="animation-delay: ${project.order * 0.3}s" 
+                                     data-width="${project.percentage}"
+                                     data-percentage="${project.percentage}%">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="project-funding-info ${isPartial ? 'partial' : ''}">
+                            <div>${fundingLabel}</div>
+                            <div>Asignado: <span class="project-funding-amount ${isPartial ? 'partial' : ''}">$${project.assigned.toFixed(2)}</span></div>
+                        </div>
+                    ` : `
+                        <div class="project-not-funded-label">
+                            ${fundingLabel}
+                        </div>
+                    `}
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Animar las barras de progreso después de que se rendericen
+        setTimeout(() => {
+            document.querySelectorAll('.project-progress-fill').forEach(fill => {
+                const width = fill.getAttribute('data-width');
+                const percentage = fill.getAttribute('data-percentage');
+                fill.style.width = width + '%';
+                // Mostrar porcentaje dentro de la barra si hay espacio (>15%)
+                if (parseInt(width) > 15) {
+                    fill.textContent = percentage;
+                }
+            });
+        }, 100);
+    }
 }
 
 // Instancia global del visualizador
 const visualizer = new AlgorithmVisualizer();
+
+
 

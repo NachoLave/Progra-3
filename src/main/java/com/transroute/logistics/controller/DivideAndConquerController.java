@@ -40,8 +40,15 @@ public class DivideAndConquerController {
             @RequestBody(required = false) CenterSortRequest request) {
         
         long startTime = System.nanoTime();
-        // Obtener desde Neo4j y ordenar
-        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
+        List<DistributionCenter> sorted;
+        
+        // Si se especifican IDs, filtrar solo esos centros. Sino, todos.
+        if (request != null && request.getCenterIds() != null && !request.getCenterIds().isEmpty()) {
+            sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSortConIds(request.getCenterIds());
+        } else {
+            sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
+        }
+        
         long endTime = System.nanoTime();
         
         Map<String, Object> response = new HashMap<>();
@@ -57,6 +64,7 @@ public class DivideAndConquerController {
         response.put("complejidad", "O(n log n)");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
         response.put("numeroCentros", sorted.size());
+        response.put("idsEspecificados", request != null && request.getCenterIds() != null ? request.getCenterIds() : "Todos");
         
         return ResponseEntity.ok(response);
     }
@@ -69,12 +77,19 @@ public class DivideAndConquerController {
     @Operation(summary = "Ordena centros por prioridad usando QuickSort desde Neo4j",
                 description = "Complejidad: O(n log n) promedio. Obtiene centros de Neo4j y los ordena.")
     public ResponseEntity<Map<String, Object>> ordenarPorPrioridadQuickSort(
-            @Parameter(description = "Request opcional", required = false)
+            @Parameter(description = "Request opcional con IDs específicos (si está vacío, usa todos)", required = false)
             @RequestBody(required = false) CenterSortRequest request) {
         
         long startTime = System.nanoTime();
-        // Obtener desde Neo4j y ordenar
-        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorPrioridadQuickSort();
+        List<DistributionCenter> sorted;
+        
+        // Si se especifican IDs, filtrar solo esos centros. Sino, todos.
+        if (request != null && request.getCenterIds() != null && !request.getCenterIds().isEmpty()) {
+            sorted = divideAndConquerService.obtenerYOrdenarPorPrioridadQuickSortConIds(request.getCenterIds());
+        } else {
+            sorted = divideAndConquerService.obtenerYOrdenarPorPrioridadQuickSort();
+        }
+        
         long endTime = System.nanoTime();
         
         Map<String, Object> response = new HashMap<>();
@@ -90,6 +105,7 @@ public class DivideAndConquerController {
         response.put("complejidad", "O(n log n) promedio, O(n²) peor caso");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
         response.put("numeroCentros", sorted.size());
+        response.put("idsEspecificados", request != null && request.getCenterIds() != null ? request.getCenterIds() : "Todos");
         
         return ResponseEntity.ok(response);
     }
@@ -103,34 +119,48 @@ public class DivideAndConquerController {
     @Operation(summary = "Busca centro por nivel de demanda usando Búsqueda Binaria desde Neo4j",
                 description = "Complejidad: O(log n). Obtiene centros de Neo4j, los ordena y busca.")
     public ResponseEntity<Map<String, Object>> buscarPorDemandaBinaria(
-            @Parameter(description = "Request con demanda objetivo", required = true)
+            @Parameter(description = "Request con demanda objetivo y opcionalmente IDs específicos", required = true)
             @RequestBody BinarySearchRequest request) {
         
-        // Obtener desde Neo4j y ordenar primero por demanda
-        List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
-        
         long startTime = System.nanoTime();
-        int index = divideAndConquerService.buscarPorDemandaBinaria(sorted, request.getTargetDemand());
-        long endTime = System.nanoTime();
         
-        Map<String, Object> response = new HashMap<>();
-        if (index != -1) {
-            DistributionCenter found = sorted.get(index);
-            response.put("encontrado", true);
-            response.put("centro", Map.of(
-                    "id", found.getId(),
-                    "name", found.getName(),
-                    "demandLevel", found.getDemandLevel()
-            ));
-            response.put("indice", index);
+        // Si se especifican IDs, buscar solo en esos centros
+        if (request.getCenterIds() != null && !request.getCenterIds().isEmpty()) {
+            Map<String, Object> result = divideAndConquerService.buscarPorDemandaBinariaConIds(
+                    request.getCenterIds(), request.getTargetDemand());
+            long endTime = System.nanoTime();
+            
+            result.put("algoritmo", "Búsqueda Binaria");
+            result.put("complejidad", "O(log n)");
+            result.put("tiempoEjecucionNanosegundos", endTime - startTime);
+            result.put("demandaBuscada", request.getTargetDemand());
+            
+            return ResponseEntity.ok(result);
         } else {
-            response.put("encontrado", false);
+            // Obtener desde Neo4j y ordenar primero por demanda
+            List<DistributionCenter> sorted = divideAndConquerService.obtenerYOrdenarPorDemandaMergeSort();
+            
+            int index = divideAndConquerService.buscarPorDemandaBinaria(sorted, request.getTargetDemand());
+            long endTime = System.nanoTime();
+            
+            Map<String, Object> response = new HashMap<>();
+            if (index != -1) {
+                DistributionCenter found = sorted.get(index);
+                response.put("encontrado", true);
+                response.put("centro", found);
+                response.put("indice", index);
+            } else {
+                response.put("encontrado", false);
+            }
+            response.put("algoritmo", "Búsqueda Binaria");
+            response.put("complejidad", "O(log n)");
+            response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+            response.put("centrosOrdenados", sorted);
+            response.put("demandaBuscada", request.getTargetDemand());
+            response.put("idsEspecificados", "Todos");
+            
+            return ResponseEntity.ok(response);
         }
-        response.put("algoritmo", "Búsqueda Binaria");
-        response.put("complejidad", "O(log n)");
-        response.put("tiempoEjecucionNanosegundos", endTime - startTime);
-        
-        return ResponseEntity.ok(response);
     }
 
     /**

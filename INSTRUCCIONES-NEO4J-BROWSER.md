@@ -77,3 +77,5 @@ MATCH (n) DETACH DELETE n;
 - Los datos se guardan inmediatamente en Neo4j Aura
 - Después de cargar, todos los módulos de la aplicación usarán estos datos automáticamente
 
+
+

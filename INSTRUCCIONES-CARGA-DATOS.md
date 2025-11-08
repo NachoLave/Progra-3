@@ -99,3 +99,5 @@ curl -X DELETE http://localhost:8080/api/data-init/clear
 - Los datos se guardan en **Neo4j Aura Cloud**
 - Todos los módulos ahora usarán estos datos automáticamente
 
+
+

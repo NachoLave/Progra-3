@@ -37,12 +37,44 @@ public class DivideAndConquerService {
     }
     
     /**
+     * Obtiene centros ESPECÍFICOS desde Neo4j y los ordena por demanda
+     * @param centerIds Lista de IDs de centros a ordenar
+     * @return Lista ordenada por demanda desde Neo4j (solo los centros especificados)
+     */
+    public List<DistributionCenter> obtenerYOrdenarPorDemandaMergeSortConIds(List<String> centerIds) {
+        List<DistributionCenter> allCenters = distributionCenterRepository.findAll();
+        
+        // Filtrar solo los centros con IDs especificados
+        List<DistributionCenter> selectedCenters = allCenters.stream()
+                .filter(c -> centerIds.contains(c.getId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        return ordenarPorDemandaMergeSort(selectedCenters);
+    }
+    
+    /**
      * Obtiene todos los centros desde Neo4j y los ordena por prioridad
      * @return Lista ordenada por prioridad desde Neo4j
      */
     public List<DistributionCenter> obtenerYOrdenarPorPrioridadQuickSort() {
         List<DistributionCenter> centers = distributionCenterRepository.findAll();
         return ordenarPorPrioridadQuickSort(centers);
+    }
+    
+    /**
+     * Obtiene centros ESPECÍFICOS desde Neo4j y los ordena por prioridad
+     * @param centerIds Lista de IDs de centros a ordenar
+     * @return Lista ordenada por prioridad desde Neo4j (solo los centros especificados)
+     */
+    public List<DistributionCenter> obtenerYOrdenarPorPrioridadQuickSortConIds(List<String> centerIds) {
+        List<DistributionCenter> allCenters = distributionCenterRepository.findAll();
+        
+        // Filtrar solo los centros con IDs especificados
+        List<DistributionCenter> selectedCenters = allCenters.stream()
+                .filter(c -> centerIds.contains(c.getId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        return ordenarPorPrioridadQuickSort(selectedCenters);
     }
 
     /**
@@ -207,6 +239,39 @@ public class DivideAndConquerService {
         
         DistributionCenter[] array = centers.toArray(new DistributionCenter[0]);
         return binarySearchDemand(array, 0, array.length - 1, targetDemand);
+    }
+    
+    /**
+     * Busca en centros ESPECÍFICOS por nivel de demanda usando Búsqueda Binaria
+     * Primero filtra por IDs, luego ordena y busca
+     * 
+     * @param centerIds Lista de IDs de centros donde buscar
+     * @param targetDemand Nivel de demanda buscado
+     * @return Mapa con resultado de la búsqueda
+     */
+    public java.util.Map<String, Object> buscarPorDemandaBinariaConIds(List<String> centerIds, int targetDemand) {
+        List<DistributionCenter> allCenters = distributionCenterRepository.findAll();
+        
+        // Filtrar solo los centros con IDs especificados
+        List<DistributionCenter> selectedCenters = allCenters.stream()
+                .filter(c -> centerIds.contains(c.getId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Ordenar por demanda antes de buscar
+        List<DistributionCenter> sorted = ordenarPorDemandaMergeSort(selectedCenters);
+        
+        int index = buscarPorDemandaBinaria(sorted, targetDemand);
+        
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("encontrado", index != -1);
+        result.put("indice", index);
+        if (index != -1) {
+            result.put("centro", sorted.get(index));
+        }
+        result.put("centrosOrdenados", sorted);
+        result.put("idsEspecificados", centerIds);
+        
+        return result;
     }
     
     /**
