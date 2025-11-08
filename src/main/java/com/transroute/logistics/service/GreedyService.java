@@ -1,6 +1,8 @@
 package com.transroute.logistics.service;
 
+import com.transroute.logistics.model.DistributionCenter;
 import com.transroute.logistics.model.Truck;
+import com.transroute.logistics.repository.DistributionCenterRepository;
 import com.transroute.logistics.repository.TruckRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,39 @@ public class GreedyService {
     
     @Autowired
     private TruckRepository truckRepository;
+    
+    @Autowired
+    private DistributionCenterRepository distributionCenterRepository;
+    
+    /**
+     * Obtiene todos los camiones disponibles en Neo4j
+     * @return Lista de todos los camiones con su información
+     */
+    public List<Map<String, Object>> obtenerTodosCamiones() {
+        List<Truck> trucks = truckRepository.findAll();
+        List<Map<String, Object>> camionesInfo = new ArrayList<>();
+        
+        for (Truck truck : trucks) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("id", truck.getId());
+            info.put("licensePlate", truck.getLicensePlate());
+            info.put("capacity", truck.getCapacity());
+            info.put("fuelCapacity", truck.getFuelCapacity());
+            info.put("currentFuel", truck.getCurrentFuel());
+            info.put("status", truck.getStatus());
+            
+            // Calcular porcentaje de combustible
+            if (truck.getFuelCapacity() != null && truck.getCurrentFuel() != null) {
+                double porcentaje = (double) truck.getCurrentFuel() / truck.getFuelCapacity() * 100;
+                info.put("fuelPercentage", porcentaje);
+                info.put("fuelNeeded", truck.getFuelCapacity() - truck.getCurrentFuel());
+            }
+            
+            camionesInfo.add(info);
+        }
+        
+        return camionesInfo;
+    }
     
     /**
      * Obtiene camiones desde Neo4j y distribuye combustible usando sus capacidades
@@ -203,6 +238,452 @@ public class GreedyService {
         }
         
         return distribucion;
+    }
+    
+    // ==========================================
+    // NUEVOS MÉTODOS CONECTADOS A NEO4J
+    // ==========================================
+    
+    /**
+     * Distribuye combustible a camiones SELECCIONADOS por el usuario
+     * Algoritmo Greedy: Prioriza camiones con menor combustible actual
+     * 
+     * @param truckIds Lista de IDs de camiones seleccionados
+     * @param combustibleDisponible Total de combustible disponible para distribuir
+     * @return Mapa con asignación detallada
+     */
+    public Map<String, Object> distribuirCombustiblePersonalizado(List<String> truckIds, int combustibleDisponible) {
+        // Obtener solo los camiones seleccionados por el usuario
+        List<Truck> trucksSeleccionados = new ArrayList<>();
+        
+        for (String truckId : truckIds) {
+            truckRepository.findById(truckId).ifPresent(trucksSeleccionados::add);
+        }
+        
+        if (trucksSeleccionados.isEmpty()) {
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("error", "Ninguno de los camiones seleccionados fue encontrado");
+            resultado.put("truckIdsNoEncontrados", truckIds);
+            return resultado;
+        }
+        
+        // Calcular necesidad de combustible para cada camión seleccionado
+        List<CamionConNecesidad> camionesConNecesidad = new ArrayList<>();
+        for (Truck truck : trucksSeleccionados) {
+            int capacidad = truck.getFuelCapacity() != null ? truck.getFuelCapacity() : 0;
+            int actual = truck.getCurrentFuel() != null ? truck.getCurrentFuel() : 0;
+            int necesidad = capacidad - actual;
+            
+            if (necesidad > 0) {
+                camionesConNecesidad.add(new CamionConNecesidad(truck, necesidad));
+            } else {
+                // Incluir camiones sin necesidad también en el resultado
+                camionesConNecesidad.add(new CamionConNecesidad(truck, 0));
+            }
+        }
+        
+        // Estrategia Greedy: Ordenar por menor porcentaje de combustible
+        camionesConNecesidad.sort((a, b) -> {
+            double porcentajeA = (double) a.truck.getCurrentFuel() / a.truck.getFuelCapacity();
+            double porcentajeB = (double) b.truck.getCurrentFuel() / b.truck.getFuelCapacity();
+            return Double.compare(porcentajeA, porcentajeB);
+        });
+        
+        // Distribuir combustible usando estrategia Greedy
+        Map<String, Integer> asignacion = new LinkedHashMap<>();
+        int combustibleRestante = combustibleDisponible;
+        int totalAsignado = 0;
+        int camionesLlenos = 0;
+        
+        for (CamionConNecesidad cn : camionesConNecesidad) {
+            if (combustibleRestante <= 0 || cn.necesidad == 0) {
+                asignacion.put(cn.truck.getId(), 0);
+                if (cn.necesidad == 0) {
+                    camionesLlenos++;
+                }
+                continue;
+            }
+            
+            // Asignar lo que se pueda
+            int cantidadAsignada = Math.min(cn.necesidad, combustibleRestante);
+            asignacion.put(cn.truck.getId(), cantidadAsignada);
+            combustibleRestante -= cantidadAsignada;
+            totalAsignado += cantidadAsignada;
+            
+            if (cantidadAsignada == cn.necesidad) {
+                camionesLlenos++;
+            }
+        }
+        
+        // Preparar respuesta detallada
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("asignacion", asignacion);
+        resultado.put("totalCamionesSeleccionados", trucksSeleccionados.size());
+        resultado.put("camionesConNecesidad", camionesConNecesidad.size());
+        resultado.put("camionesLlenos", camionesLlenos);
+        resultado.put("combustibleDisponible", combustibleDisponible);
+        resultado.put("combustibleAsignado", totalAsignado);
+        resultado.put("combustibleRestante", combustibleRestante);
+        resultado.put("camionesDetalle", generarDetalleCamiones(camionesConNecesidad, asignacion));
+        
+        return resultado;
+    }
+    
+    /**
+     * Distribuye combustible a camiones desde Neo4j de forma óptima
+     * Algoritmo Greedy: Prioriza camiones con menor combustible actual
+     * y asigna combustible hasta llenar su capacidad
+     * 
+     * @param combustibleDisponible Total de combustible disponible para distribuir
+     * @return Mapa con asignación: TruckID -> cantidad de combustible asignado
+     */
+    public Map<String, Object> distribuirCombustibleOptimizado(int combustibleDisponible) {
+        // Obtener todos los camiones disponibles de Neo4j
+        List<Truck> trucks = truckRepository.findAll();
+        
+        // Filtrar solo camiones AVAILABLE o IN_TRANSIT
+        List<Truck> trucksActivos = trucks.stream()
+                .filter(t -> "AVAILABLE".equals(t.getStatus()) || "IN_TRANSIT".equals(t.getStatus()))
+                .toList();
+        
+        // Calcular necesidad de combustible para cada camión
+        List<CamionConNecesidad> camionesConNecesidad = new ArrayList<>();
+        for (Truck truck : trucksActivos) {
+            int capacidad = truck.getFuelCapacity() != null ? truck.getFuelCapacity() : 0;
+            int actual = truck.getCurrentFuel() != null ? truck.getCurrentFuel() : 0;
+            int necesidad = capacidad - actual;
+            
+            if (necesidad > 0) {
+                camionesConNecesidad.add(new CamionConNecesidad(truck, necesidad));
+            }
+        }
+        
+        // Estrategia Greedy: Ordenar por mayor necesidad (o por menor combustible actual)
+        camionesConNecesidad.sort((a, b) -> {
+            // Priorizar por porcentaje de combustible (menor porcentaje primero)
+            double porcentajeA = (double) a.truck.getCurrentFuel() / a.truck.getFuelCapacity();
+            double porcentajeB = (double) b.truck.getCurrentFuel() / b.truck.getFuelCapacity();
+            return Double.compare(porcentajeA, porcentajeB);
+        });
+        
+        // Distribuir combustible usando estrategia Greedy
+        Map<String, Integer> asignacion = new LinkedHashMap<>();
+        int combustibleRestante = combustibleDisponible;
+        int totalAsignado = 0;
+        
+        for (CamionConNecesidad cn : camionesConNecesidad) {
+            if (combustibleRestante <= 0) {
+                asignacion.put(cn.truck.getId(), 0);
+                continue;
+            }
+            
+            // Asignar lo que se pueda: mínimo entre necesidad y combustible disponible
+            int cantidadAsignada = Math.min(cn.necesidad, combustibleRestante);
+            asignacion.put(cn.truck.getId(), cantidadAsignada);
+            combustibleRestante -= cantidadAsignada;
+            totalAsignado += cantidadAsignada;
+        }
+        
+        // Preparar respuesta detallada
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("asignacion", asignacion);
+        resultado.put("totalCamiones", camionesConNecesidad.size());
+        resultado.put("combustibleDisponible", combustibleDisponible);
+        resultado.put("combustibleAsignado", totalAsignado);
+        resultado.put("combustibleRestante", combustibleRestante);
+        resultado.put("camionesDetalle", generarDetalleCamiones(camionesConNecesidad, asignacion));
+        
+        return resultado;
+    }
+    
+    /**
+     * Distribuye peso/carga a camiones usando algoritmo Greedy
+     * Algoritmo: First Fit Decreasing - Ordena cargas por peso (descendente)
+     * y asigna cada carga al primer camión que tenga capacidad disponible
+     * 
+     * @param cargasDisponibles Lista de pesos de cargas a distribuir
+     * @return Mapa con asignación: TruckID -> lista de cargas asignadas
+     */
+    public Map<String, Object> distribuirPesoGreedy(List<Integer> cargasDisponibles) {
+        // Obtener camiones disponibles de Neo4j
+        List<Truck> trucks = truckRepository.findAll();
+        List<Truck> trucksDisponibles = trucks.stream()
+                .filter(t -> "AVAILABLE".equals(t.getStatus()))
+                .toList();
+        
+        if (trucksDisponibles.isEmpty()) {
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("error", "No hay camiones disponibles");
+            resultado.put("cargasNoAsignadas", cargasDisponibles);
+            return resultado;
+        }
+        
+        // Ordenar cargas de mayor a menor (First Fit Decreasing)
+        List<Integer> cargasOrdenadas = new ArrayList<>(cargasDisponibles);
+        cargasOrdenadas.sort(Collections.reverseOrder());
+        
+        // Inicializar capacidades disponibles de cada camión
+        Map<String, Integer> capacidadDisponible = new HashMap<>();
+        Map<String, List<Integer>> asignacion = new LinkedHashMap<>();
+        
+        for (Truck truck : trucksDisponibles) {
+            capacidadDisponible.put(truck.getId(), truck.getCapacity());
+            asignacion.put(truck.getId(), new ArrayList<>());
+        }
+        
+        // Distribuir cargas usando First Fit Decreasing
+        List<Integer> cargasNoAsignadas = new ArrayList<>();
+        
+        for (Integer carga : cargasOrdenadas) {
+            boolean asignada = false;
+            
+            // Intentar asignar a cada camión (Greedy: primer camión que pueda)
+            for (Truck truck : trucksDisponibles) {
+                int disponible = capacidadDisponible.get(truck.getId());
+                
+                if (disponible >= carga) {
+                    // Asignar carga a este camión
+                    asignacion.get(truck.getId()).add(carga);
+                    capacidadDisponible.put(truck.getId(), disponible - carga);
+                    asignada = true;
+                    break;
+                }
+            }
+            
+            if (!asignada) {
+                cargasNoAsignadas.add(carga);
+            }
+        }
+        
+        // Calcular estadísticas
+        int totalAsignado = cargasOrdenadas.size() - cargasNoAsignadas.size();
+        int pesoTotalAsignado = cargasOrdenadas.stream()
+                .mapToInt(Integer::intValue)
+                .sum() - cargasNoAsignadas.stream().mapToInt(Integer::intValue).sum();
+        
+        // Preparar respuesta
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("asignacion", asignacion);
+        resultado.put("totalCamiones", trucksDisponibles.size());
+        resultado.put("totalCargas", cargasDisponibles.size());
+        resultado.put("cargasAsignadas", totalAsignado);
+        resultado.put("cargasNoAsignadas", cargasNoAsignadas);
+        resultado.put("pesoTotalAsignado", pesoTotalAsignado);
+        resultado.put("detalleUtilizacion", generarDetalleUtilizacionCamiones(trucksDisponibles, asignacion, capacidadDisponible));
+        
+        return resultado;
+    }
+    
+    /**
+     * Asigna cargas desde centros de distribución a camiones
+     * considerando demandas de los centros y capacidades de rutas
+     * 
+     * @return Mapa con plan de distribución completo
+     */
+    public Map<String, Object> asignarCargasDesdeNeo4j() {
+        // Obtener datos de Neo4j
+        List<DistributionCenter> centros = distributionCenterRepository.findAllOrderedByPriority();
+        List<Truck> trucks = truckRepository.findAll();
+        
+        // Filtrar centros con carga pendiente
+        List<DistributionCenter> centrosConCarga = centros.stream()
+                .filter(dc -> dc.getCurrentLoad() != null && dc.getCurrentLoad() > 0)
+                .toList();
+        
+        // Filtrar camiones disponibles
+        List<Truck> trucksDisponibles = trucks.stream()
+                .filter(t -> "AVAILABLE".equals(t.getStatus()))
+                .toList();
+        
+        if (trucksDisponibles.isEmpty()) {
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("error", "No hay camiones disponibles");
+            return resultado;
+        }
+        
+        // Crear lista de cargas basadas en demanda de centros
+        List<CargaCentro> cargas = new ArrayList<>();
+        for (DistributionCenter centro : centrosConCarga) {
+            // Calcular carga basada en nivel de demanda
+            int carga = (centro.getDemandLevel() * 100); // Simplificado
+            cargas.add(new CargaCentro(centro.getId(), centro.getName(), carga, centro.getPriority()));
+        }
+        
+        // Ordenar por prioridad del centro (menor número = mayor prioridad) y luego por peso
+        cargas.sort((a, b) -> {
+            int priComp = Integer.compare(a.prioridad, b.prioridad);
+            if (priComp != 0) return priComp;
+            return Integer.compare(b.peso, a.peso); // Mayor peso primero
+        });
+        
+        // Asignar cargas a camiones usando Greedy
+        Map<String, List<AsignacionCarga>> asignaciones = new LinkedHashMap<>();
+        Map<String, Integer> capacidadDisponible = new HashMap<>();
+        
+        for (Truck truck : trucksDisponibles) {
+            asignaciones.put(truck.getId(), new ArrayList<>());
+            capacidadDisponible.put(truck.getId(), truck.getCapacity());
+        }
+        
+        List<CargaCentro> cargasNoAsignadas = new ArrayList<>();
+        
+        for (CargaCentro carga : cargas) {
+            boolean asignada = false;
+            
+            // Greedy: Asignar al primer camión con capacidad suficiente
+            for (Truck truck : trucksDisponibles) {
+                int disponible = capacidadDisponible.get(truck.getId());
+                
+                if (disponible >= carga.peso) {
+                    asignaciones.get(truck.getId()).add(
+                        new AsignacionCarga(carga.centroId, carga.centroNombre, carga.peso)
+                    );
+                    capacidadDisponible.put(truck.getId(), disponible - carga.peso);
+                    asignada = true;
+                    break;
+                }
+            }
+            
+            if (!asignada) {
+                cargasNoAsignadas.add(carga);
+            }
+        }
+        
+        // Preparar respuesta
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("asignaciones", asignaciones);
+        resultado.put("totalCamiones", trucksDisponibles.size());
+        resultado.put("totalCargas", cargas.size());
+        resultado.put("cargasAsignadas", cargas.size() - cargasNoAsignadas.size());
+        resultado.put("cargasNoAsignadas", cargasNoAsignadas);
+        resultado.put("detalleAsignaciones", generarDetalleAsignaciones(trucksDisponibles, asignaciones, capacidadDisponible));
+        
+        return resultado;
+    }
+    
+    // ==========================================
+    // MÉTODOS AUXILIARES
+    // ==========================================
+    
+    private List<Map<String, Object>> generarDetalleCamiones(
+            List<CamionConNecesidad> camiones, 
+            Map<String, Integer> asignacion) {
+        
+        List<Map<String, Object>> detalle = new ArrayList<>();
+        
+        for (CamionConNecesidad cn : camiones) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("truckId", cn.truck.getId());
+            info.put("licensePlate", cn.truck.getLicensePlate());
+            info.put("capacidadTotal", cn.truck.getFuelCapacity());
+            info.put("combustibleActual", cn.truck.getCurrentFuel());
+            info.put("necesidad", cn.necesidad);
+            info.put("combustibleAsignado", asignacion.getOrDefault(cn.truck.getId(), 0));
+            
+            int nuevoNivel = cn.truck.getCurrentFuel() + asignacion.getOrDefault(cn.truck.getId(), 0);
+            info.put("combustibleFinal", nuevoNivel);
+            info.put("porcentajeFinal", (double) nuevoNivel / cn.truck.getFuelCapacity() * 100);
+            
+            detalle.add(info);
+        }
+        
+        return detalle;
+    }
+    
+    private List<Map<String, Object>> generarDetalleUtilizacionCamiones(
+            List<Truck> trucks,
+            Map<String, List<Integer>> asignacion,
+            Map<String, Integer> capacidadDisponible) {
+        
+        List<Map<String, Object>> detalle = new ArrayList<>();
+        
+        for (Truck truck : trucks) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("truckId", truck.getId());
+            info.put("licensePlate", truck.getLicensePlate());
+            info.put("capacidadTotal", truck.getCapacity());
+            
+            List<Integer> cargas = asignacion.get(truck.getId());
+            int pesoAsignado = cargas.stream().mapToInt(Integer::intValue).sum();
+            
+            info.put("cargasAsignadas", cargas);
+            info.put("numeroCargasAsignadas", cargas.size());
+            info.put("pesoAsignado", pesoAsignado);
+            info.put("capacidadDisponible", capacidadDisponible.get(truck.getId()));
+            info.put("porcentajeUtilizacion", (double) pesoAsignado / truck.getCapacity() * 100);
+            
+            detalle.add(info);
+        }
+        
+        return detalle;
+    }
+    
+    private List<Map<String, Object>> generarDetalleAsignaciones(
+            List<Truck> trucks,
+            Map<String, List<AsignacionCarga>> asignaciones,
+            Map<String, Integer> capacidadDisponible) {
+        
+        List<Map<String, Object>> detalle = new ArrayList<>();
+        
+        for (Truck truck : trucks) {
+            Map<String, Object> info = new HashMap<>();
+            info.put("truckId", truck.getId());
+            info.put("licensePlate", truck.getLicensePlate());
+            info.put("capacidadTotal", truck.getCapacity());
+            
+            List<AsignacionCarga> cargas = asignaciones.get(truck.getId());
+            int pesoTotal = cargas.stream().mapToInt(ac -> ac.peso).sum();
+            
+            info.put("asignaciones", cargas);
+            info.put("numeroAsignaciones", cargas.size());
+            info.put("pesoTotal", pesoTotal);
+            info.put("capacidadDisponible", capacidadDisponible.get(truck.getId()));
+            info.put("porcentajeUtilizacion", (double) pesoTotal / truck.getCapacity() * 100);
+            
+            detalle.add(info);
+        }
+        
+        return detalle;
+    }
+    
+    // ==========================================
+    // CLASES INTERNAS AUXILIARES
+    // ==========================================
+    
+    private static class CamionConNecesidad {
+        Truck truck;
+        int necesidad;
+        
+        CamionConNecesidad(Truck truck, int necesidad) {
+            this.truck = truck;
+            this.necesidad = necesidad;
+        }
+    }
+    
+    private static class CargaCentro {
+        String centroId;
+        String centroNombre;
+        int peso;
+        int prioridad;
+        
+        CargaCentro(String centroId, String centroNombre, int peso, int prioridad) {
+            this.centroId = centroId;
+            this.centroNombre = centroNombre;
+            this.peso = peso;
+            this.prioridad = prioridad;
+        }
+    }
+    
+    public static class AsignacionCarga {
+        public String centroId;
+        public String centroNombre;
+        public int peso;
+        
+        public AsignacionCarga(String centroId, String centroNombre, int peso) {
+            this.centroId = centroId;
+            this.centroNombre = centroNombre;
+            this.peso = peso;
+        }
     }
     
     /**

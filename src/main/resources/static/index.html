@@ -62,8 +62,21 @@
                     <div class="card">
                         <h3><i class="fas fa-dollar-sign"></i> Calcular Costo Total</h3>
                         <div class="form-group">
-                            <label>Costos por tramo (separados por comas):</label>
-                            <input type="text" id="costs-input" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
+                            <label><i class="fas fa-route"></i> Selecciona las Rutas:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> Selecciona rutas para calcular el costo total
+                                    </p>
+                                    <button type="button" class="btn-filter-small" onclick="cargarRutasRecursividad()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                        <i class="fas fa-sync-alt"></i> Recargar
+                                    </button>
+                                </div>
+                                <div class="loading-spinner" id="cost-routes-loading">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando rutas...
+                                </div>
+                                <div id="cost-routes-container" class="selectable-items-container" style="display: none;"></div>
+                            </div>
                         </div>
                         <button class="btn btn-primary" onclick="calcularCostoTotal()">
                             <i class="fas fa-calculator"></i> Calcular
@@ -74,8 +87,21 @@
                     <div class="card">
                         <h3><i class="fas fa-route"></i> Calcular Distancia Total</h3>
                         <div class="form-group">
-                            <label>Distancias por tramo (separadas por comas):</label>
-                            <input type="text" id="distances-input" placeholder="50.0, 75.5, 30.0, 100.0" value="50.0, 75.5, 30.0, 100.0">
+                            <label><i class="fas fa-road"></i> Selecciona las Rutas:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> Selecciona rutas para calcular la distancia total
+                                    </p>
+                                    <button type="button" class="btn-filter-small" onclick="cargarRutasRecursividad()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                        <i class="fas fa-sync-alt"></i> Recargar
+                                    </button>
+                                </div>
+                                <div class="loading-spinner" id="distance-routes-loading">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando rutas...
+                                </div>
+                                <div id="distance-routes-container" class="selectable-items-container" style="display: none;"></div>
+                            </div>
                         </div>
                         <button class="btn btn-primary" onclick="calcularDistanciaTotal()">
                             <i class="fas fa-calculator"></i> Calcular
@@ -86,12 +112,21 @@
                     <div class="card">
                         <h3><i class="fas fa-chart-bar"></i> Métricas Combinadas</h3>
                         <div class="form-group">
-                            <label>Costos:</label>
-                            <input type="text" id="combined-costs" placeholder="150.5, 200.0, 75.25" value="150.5, 200.0, 75.25">
+                            <label><i class="fas fa-route"></i> Selecciona las Rutas:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> Selecciona rutas para calcular costos y distancias
+                                    </p>
+                                    <button type="button" class="btn-filter-small" onclick="cargarRutasRecursividad()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                        <i class="fas fa-sync-alt"></i> Recargar
+                                    </button>
+                                </div>
+                                <div class="loading-spinner" id="combined-routes-loading">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando rutas...
+                                </div>
+                                <div id="combined-routes-container" class="selectable-items-container" style="display: none;"></div>
                         </div>
-                        <div class="form-group">
-                            <label>Distancias:</label>
-                            <input type="text" id="combined-distances" placeholder="50.0, 75.5, 30.0" value="50.0, 75.5, 30.0">
                         </div>
                         <button class="btn btn-primary" onclick="calcularMetricasCombinadas()">
                             <i class="fas fa-calculator"></i> Calcular
@@ -102,8 +137,21 @@
                     <div class="card">
                         <h3><i class="fas fa-tachometer-alt"></i> Comparar Rendimiento</h3>
                         <div class="form-group">
-                            <label>Costos para comparar:</label>
-                            <input type="text" id="compare-costs" placeholder="150.5, 200.0, 75.25, 300.0" value="150.5, 200.0, 75.25, 300.0">
+                            <label><i class="fas fa-route"></i> Selecciona las Rutas:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> Selecciona rutas para comparar rendimiento
+                                    </p>
+                                    <button type="button" class="btn-filter-small" onclick="cargarRutasRecursividad()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                        <i class="fas fa-sync-alt"></i> Recargar
+                                    </button>
+                                </div>
+                                <div class="loading-spinner" id="compare-routes-loading">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando rutas...
+                                </div>
+                                <div id="compare-routes-container" class="selectable-items-container" style="display: none;"></div>
+                            </div>
                         </div>
                         <button class="btn btn-success" onclick="compararRendimiento()">
                             <i class="fas fa-balance-scale"></i> Comparar
@@ -181,16 +229,55 @@
                     <div class="card">
                         <h3><i class="fas fa-gas-pump"></i> Distribuir Combustible</h3>
                         <div class="form-group">
-                            <label>Cantidad requerida (litros):</label>
-                            <input type="number" id="fuel-amount" placeholder="87" value="87">
+                            <label><i class="fas fa-oil-can"></i> Combustible Disponible (litros):</label>
+                            <input type="number" id="fuel-amount" placeholder="1500" value="1500" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Tamaños de bidones (separados por comas):</label>
-                            <input type="text" id="fuel-sizes" placeholder="50, 20, 10, 5, 2" value="50, 20, 10, 5, 2">
+                            <label><i class="fas fa-truck"></i> Selecciona los Camiones:</label>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                        <i class="fas fa-info-circle"></i> Selecciona los camiones que deseas abastecer de combustible
+                                    </p>
+                                    <button type="button" class="btn-filter-small" onclick="cargarCamionesGreedy()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                        <i class="fas fa-sync-alt"></i> Recargar
+                                    </button>
+                                </div>
+                                
+                                <div style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="btn-filter-small active" onclick="filtrarCamionesGreedy('todos')">
+                                        Todos (<span id="greedy-count-todos">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-filter-small" onclick="filtrarCamionesGreedy('available')">
+                                        Disponibles (<span id="greedy-count-available">0</span>)
+                                    </button>
+                                    <button type="button" class="btn-filter-small" onclick="filtrarCamionesGreedy('bajo')">
+                                        Bajo Combustible (<span id="greedy-count-bajo">0</span>)
+                                    </button>
+                                </div>
+                                
+                                <div class="loading-spinner" id="fuel-trucks-loading">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando camiones...
+                                </div>
+                                <div id="fuel-trucks-container" class="selectable-trucks-container" style="display: none;"></div>
+                                
+                                <div id="fuel-selection-summary" class="selection-summary-compact" style="display: none;">
+                                    <div><strong><span id="fuel-selected-count">0</span></strong> camiones seleccionados</div>
+                                    <div>Necesitan: <strong><span id="fuel-needed-total">0</span>L</strong></div>
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn btn-primary" onclick="distribuirCombustible()">
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="distribuirCombustiblePersonalizado()" id="btn-fuel-distribuir" disabled>
                             <i class="fas fa-gas-pump"></i> Distribuir
                         </button>
+                            <button type="button" class="btn btn-secondary" onclick="seleccionarTodosCamionesGreedy()">
+                                <i class="fas fa-check-double"></i> Todos
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="limpiarSeleccionCamionesGreedy()">
+                                <i class="fas fa-times"></i> Limpiar
+                            </button>
+                        </div>
                         <div id="fuel-result" class="result-box"></div>
                     </div>
 

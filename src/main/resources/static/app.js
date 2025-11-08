@@ -2158,12 +2158,142 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 
 // ==================== MÓDULO 1: RECURSIVIDAD ====================
 
+let rutasRecursividadData = [];
+
+// Cargar rutas al inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    const recursiveTab = document.querySelector('[data-module="recursive"]');
+    if (recursiveTab) {
+        recursiveTab.addEventListener('click', function() {
+            setTimeout(cargarRutasRecursividad, 200);
+        });
+    }
+    
+    // Si ya estamos en el módulo recursive al cargar
+    setTimeout(function() {
+        const moduleRecursive = document.getElementById('module-recursive');
+        if (moduleRecursive && moduleRecursive.classList.contains('active')) {
+            cargarRutasRecursividad();
+        }
+    }, 500);
+});
+
+async function cargarRutasRecursividad() {
+    const containers = [
+        'cost-routes-container',
+        'distance-routes-container',
+        'combined-routes-container',
+        'compare-routes-container'
+    ];
+    
+    const loadings = [
+        'cost-routes-loading',
+        'distance-routes-loading',
+        'combined-routes-loading',
+        'compare-routes-loading'
+    ];
+    
+    // Mostrar loading
+    loadings.forEach(id => {
+        const loading = document.getElementById(id);
+        if (loading) {
+            loading.style.display = 'block';
+            loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando rutas desde Neo4j...';
+        }
+    });
+    
+    containers.forEach(id => {
+        const container = document.getElementById(id);
+        if (container) container.style.display = 'none';
+    });
+    
+    try {
+        const response = await fetch(`${API_BASE}/neo4j/data`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        const rutas = Array.isArray(data.rutas) ? data.rutas : [];
+        
+        if (rutas.length === 0) {
+            loadings.forEach(id => {
+                const loading = document.getElementById(id);
+                if (loading) {
+                    loading.innerHTML = `
+                        <div style="color: var(--warning-color); padding: 1rem;">
+                            <i class="fas fa-exclamation-triangle"></i> No se encontraron rutas en Neo4j.
+                        </div>
+                    `;
+                }
+            });
+            return;
+        }
+        
+        rutasRecursividadData = rutas;
+        
+        // Mostrar rutas en todos los contenedores
+        containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = '';
+            rutas.forEach(ruta => {
+                const item = document.createElement('div');
+                item.className = 'selectable-item';
+                item.dataset.id = ruta.id || '';
+                item.dataset.cost = ruta.cost || 0;
+                item.dataset.distance = ruta.distance || 0;
+                item.textContent = `${ruta.name || ruta.id} - Costo: $${ruta.cost} - Distancia: ${ruta.distance}km`;
+                item.onclick = () => item.classList.toggle('selected');
+                container.appendChild(item);
+            });
+            
+            container.style.display = 'flex';
+        });
+        
+        // Ocultar loading
+        loadings.forEach(id => {
+            const loading = document.getElementById(id);
+            if (loading) loading.style.display = 'none';
+        });
+        
+    } catch (error) {
+        loadings.forEach(id => {
+            const loading = document.getElementById(id);
+            if (loading) {
+                loading.innerHTML = `
+                    <div style="color: var(--danger-color); padding: 1rem;">
+                        <i class="fas fa-times-circle"></i> Error: ${error.message}
+                    </div>
+                `;
+            }
+        });
+    }
+}
+
+function obtenerRutasSeleccionadas(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    
+    const selectedItems = container.querySelectorAll('.selectable-item.selected');
+    return Array.from(selectedItems).map(item => ({
+        id: item.dataset.id,
+        cost: parseFloat(item.dataset.cost),
+        distance: parseFloat(item.dataset.distance)
+    }));
+}
+
 async function calcularCostoTotal() {
+    const rutasSeleccionadas = obtenerRutasSeleccionadas('cost-routes-container');
+    
+    if (rutasSeleccionadas.length === 0) {
+        showResult('cost-result', { error: '⚠️ Por favor selecciona al menos una ruta' });
+        return;
+    }
+    
+    const costs = rutasSeleccionadas.map(r => r.cost);
+    
     showLoading();
     try {
-        const costsInput = document.getElementById('costs-input').value;
-        const costs = costsInput.split(',').map(c => parseFloat(c.trim())).filter(c => !isNaN(c));
-        
         const response = await fetch(`${API_BASE}/recursive-metrics/costo-total`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2171,6 +2301,8 @@ async function calcularCostoTotal() {
         });
         
         const data = await response.json();
+        data.rutasUsadas = rutasSeleccionadas.length;
+        data.rutasDetalle = rutasSeleccionadas.map(r => `${r.id}: $${r.cost}`).join(', ');
         showResult('cost-result', data);
     } catch (error) {
         showResult('cost-result', { error: 'Error al calcular: ' + error.message });
@@ -2246,11 +2378,17 @@ async function verTablaDP() {
 }
 
 async function calcularDistanciaTotal() {
+    const rutasSeleccionadas = obtenerRutasSeleccionadas('distance-routes-container');
+    
+    if (rutasSeleccionadas.length === 0) {
+        showResult('distance-result', { error: '⚠️ Por favor selecciona al menos una ruta' });
+        return;
+    }
+    
+    const distances = rutasSeleccionadas.map(r => r.distance);
+    
     showLoading();
     try {
-        const distancesInput = document.getElementById('distances-input').value;
-        const distances = distancesInput.split(',').map(d => parseFloat(d.trim())).filter(d => !isNaN(d));
-        
         const response = await fetch(`${API_BASE}/recursive-metrics/distancia-total`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2258,6 +2396,8 @@ async function calcularDistanciaTotal() {
         });
         
         const data = await response.json();
+        data.rutasUsadas = rutasSeleccionadas.length;
+        data.rutasDetalle = rutasSeleccionadas.map(r => `${r.id}: ${r.distance}km`).join(', ');
         showResult('distance-result', data);
     } catch (error) {
         showResult('distance-result', { error: 'Error al calcular: ' + error.message });
@@ -2267,13 +2407,18 @@ async function calcularDistanciaTotal() {
 }
 
 async function calcularMetricasCombinadas() {
+    const rutasSeleccionadas = obtenerRutasSeleccionadas('combined-routes-container');
+    
+    if (rutasSeleccionadas.length === 0) {
+        showResult('combined-result', { error: '⚠️ Por favor selecciona al menos una ruta' });
+        return;
+    }
+    
+    const costs = rutasSeleccionadas.map(r => r.cost);
+    const distances = rutasSeleccionadas.map(r => r.distance);
+    
     showLoading();
     try {
-        const costsInput = document.getElementById('combined-costs').value;
-        const distancesInput = document.getElementById('combined-distances').value;
-        const costs = costsInput.split(',').map(c => parseFloat(c.trim())).filter(c => !isNaN(c));
-        const distances = distancesInput.split(',').map(d => parseFloat(d.trim())).filter(d => !isNaN(d));
-        
         const response = await fetch(`${API_BASE}/recursive-metrics/metricas-combinadas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2281,6 +2426,8 @@ async function calcularMetricasCombinadas() {
         });
         
         const data = await response.json();
+        data.rutasUsadas = rutasSeleccionadas.length;
+        data.rutasDetalle = rutasSeleccionadas.map(r => `${r.id}: $${r.cost} / ${r.distance}km`).join(', ');
         showResult('combined-result', data);
     } catch (error) {
         showResult('combined-result', { error: 'Error al calcular: ' + error.message });
@@ -2290,11 +2437,17 @@ async function calcularMetricasCombinadas() {
 }
 
 async function compararRendimiento() {
+    const rutasSeleccionadas = obtenerRutasSeleccionadas('compare-routes-container');
+    
+    if (rutasSeleccionadas.length === 0) {
+        showResult('compare-result', { error: '⚠️ Por favor selecciona al menos una ruta' });
+        return;
+    }
+    
+    const costs = rutasSeleccionadas.map(r => r.cost);
+    
     showLoading();
     try {
-        const costsInput = document.getElementById('compare-costs').value;
-        const costs = costsInput.split(',').map(c => parseFloat(c.trim())).filter(c => !isNaN(c));
-        
         const response = await fetch(`${API_BASE}/recursive-metrics/comparar-rendimiento`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2302,6 +2455,8 @@ async function compararRendimiento() {
         });
         
         const data = await response.json();
+        data.rutasUsadas = rutasSeleccionadas.length;
+        data.rutasDetalle = rutasSeleccionadas.map(r => `${r.id}: $${r.cost}`).join(', ');
         showResult('compare-result', data, true);
     } catch (error) {
         showResult('compare-result', { error: 'Error al comparar: ' + error.message });
@@ -2400,20 +2555,613 @@ async function distribuirCombustible() {
     }
 }
 
-async function distribuirPresupuesto() {
-    showLoading();
+// ==================== SELECCIÓN PERSONALIZADA DE CAMIONES ====================
+let todosLosCamionesGreedy = [];
+let camionesSeleccionadosGreedy = new Set();
+let filtroActualGreedy = 'todos';
+
+// Cargar camiones cuando se activa el módulo Greedy
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar camiones cuando se hace clic en el tab de Greedy
+    const greedyTab = document.querySelector('[data-module="greedy"]');
+    if (greedyTab) {
+        greedyTab.addEventListener('click', function() {
+            setTimeout(cargarCamionesGreedy, 200);
+        });
+    }
+    
+    // Si ya estamos en el módulo Greedy al cargar la página, cargar camiones
+    setTimeout(function() {
+        const moduleGreedy = document.getElementById('module-greedy');
+        if (moduleGreedy && moduleGreedy.classList.contains('active')) {
+            cargarCamionesGreedy();
+        }
+    }, 500);
+});
+
+async function cargarCamionesGreedy() {
+    const container = document.getElementById('fuel-trucks-container');
+    const loading = document.getElementById('fuel-trucks-loading');
+    
+    if (!container || !loading) {
+        console.log('No se encontraron los elementos del contenedor');
+        return;
+    }
+    
+    loading.style.display = 'block';
+    container.style.display = 'none';
+    loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando camiones desde Neo4j...';
+    
     try {
-        const presupuestoTotal = parseFloat(document.getElementById('budget-total').value);
+        // Usar el endpoint existente que ya funciona (igual que grafos)
+        console.log('Cargando datos desde:', `${API_BASE}/neo4j/data`);
+        const response = await fetch(`${API_BASE}/neo4j/data`);
         
-        if (proyectosBudget.length === 0) {
-            // Usar datos de ejemplo
-            proyectosBudget = [
-                { nombre: "Proyecto A", costo: 300, beneficio: 400 },
-                { nombre: "Proyecto B", costo: 200, beneficio: 350 },
-                { nombre: "Proyecto C", costo: 500, beneficio: 600 }
-            ];
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
+        const data = await response.json();
+        console.log('Datos recibidos:', data);
+        
+        // Extraer camiones del objeto de respuesta
+        const camiones = Array.isArray(data.camiones) ? data.camiones : [];
+        console.log('Total camiones cargados:', camiones.length);
+        
+        if (camiones.length === 0) {
+            loading.innerHTML = `
+                <div style="color: var(--warning-color); padding: 1rem;">
+                    <i class="fas fa-exclamation-triangle"></i> No se encontraron camiones en Neo4j.<br>
+                    <small>Verifica que los datos estén cargados en la base de datos.</small><br>
+                    <small style="margin-top: 0.5rem; display: block;">Ejecuta: neo4j-cargar-datos-masivo.cypher</small>
+                </div>
+            `;
+            return;
+        }
+        
+        // Calcular información adicional para cada camión
+        todosLosCamionesGreedy = camiones.map(camion => {
+            const fuelPercentage = camion.fuelCapacity > 0 
+                ? (camion.currentFuel / camion.fuelCapacity) * 100 
+                : 0;
+            const fuelNeeded = camion.fuelCapacity - camion.currentFuel;
+            
+            return {
+                ...camion,
+                fuelPercentage: fuelPercentage,
+                fuelNeeded: fuelNeeded > 0 ? fuelNeeded : 0
+            };
+        });
+        
+        console.log('Camiones procesados:', todosLosCamionesGreedy);
+        
+        actualizarContadoresGreedy();
+        mostrarCamionesGreedy(todosLosCamionesGreedy);
+        
+        loading.style.display = 'none';
+        container.style.display = 'grid';
+    } catch (error) {
+        console.error('Error al cargar camiones:', error);
+        loading.innerHTML = `
+            <div style="color: var(--danger-color); padding: 1rem;">
+                <i class="fas fa-times-circle"></i> <strong>Error al cargar camiones</strong><br>
+                <small>${error.message}</small><br>
+                <small style="margin-top: 0.5rem; display: block;">
+                    Verifica que Spring Boot esté ejecutándose y que Neo4j esté conectado.
+                </small>
+            </div>
+        `;
+    }
+}
+
+function mostrarCamionesGreedy(camiones) {
+    const container = document.getElementById('fuel-trucks-container');
+    if (!container) return;
+    
+    if (!camiones || camiones.length === 0) {
+        container.innerHTML = '<div class="loading-placeholder">No hay camiones disponibles</div>';
+        return;
+    }
+    
+    container.innerHTML = camiones.map(camion => {
+        const selected = camionesSeleccionadosGreedy.has(camion.id);
+        const porcentaje = camion.fuelPercentage || 0;
+        const fuelClass = getFuelClassGreedy(porcentaje);
+        const statusClass = getStatusClassGreedy(camion.status);
+        
+        return `
+            <div class="selectable-truck-card ${selected ? 'selected' : ''}" 
+                 id="truck-card-greedy-${camion.id}"
+                 onclick="toggleSelectionGreedy('${camion.id}')">
+                <input type="checkbox" 
+                       class="truck-checkbox-small" 
+                       id="check-greedy-${camion.id}"
+                       ${selected ? 'checked' : ''}
+                       onclick="event.stopPropagation(); toggleSelectionGreedy('${camion.id}')">
+                
+                <div class="truck-card-header">
+                    <div class="truck-id-small">${camion.id}</div>
+                    <div class="truck-plate-small">${camion.licensePlate}</div>
+                </div>
+                
+                <div class="truck-info-row">
+                    <span>💧 Combustible:</span>
+                    <strong>${camion.currentFuel}L / ${camion.fuelCapacity}L</strong>
+                </div>
+                
+                <div class="truck-info-row">
+                    <span>🔧 Necesita:</span>
+                    <strong style="color: var(--danger-color);">${camion.fuelNeeded || 0}L</strong>
+                </div>
+                
+                <div class="truck-fuel-bar">
+                    <div class="truck-fuel-fill ${fuelClass}" style="width: ${porcentaje}%">
+                        ${porcentaje.toFixed(0)}%
+                    </div>
+                </div>
+                
+                <div class="truck-badge badge-${statusClass}">
+                    ${getStatusTextGreedy(camion.status)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleSelectionGreedy(truckId) {
+    if (camionesSeleccionadosGreedy.has(truckId)) {
+        camionesSeleccionadosGreedy.delete(truckId);
+    } else {
+        camionesSeleccionadosGreedy.add(truckId);
+    }
+    actualizarInterfazGreedy();
+}
+
+function seleccionarTodosCamionesGreedy() {
+    const camionesVisibles = filtrarCamionesPorFiltroGreedy(todosLosCamionesGreedy, filtroActualGreedy);
+    camionesVisibles.forEach(c => camionesSeleccionadosGreedy.add(c.id));
+    actualizarInterfazGreedy();
+}
+
+function limpiarSeleccionCamionesGreedy() {
+    camionesSeleccionadosGreedy.clear();
+    actualizarInterfazGreedy();
+}
+
+function actualizarInterfazGreedy() {
+    // Actualizar tarjetas
+    todosLosCamionesGreedy.forEach(camion => {
+        const card = document.getElementById(`truck-card-greedy-${camion.id}`);
+        const check = document.getElementById(`check-greedy-${camion.id}`);
+        
+        if (card && check) {
+            if (camionesSeleccionadosGreedy.has(camion.id)) {
+                card.classList.add('selected');
+                check.checked = true;
+            } else {
+                card.classList.remove('selected');
+                check.checked = false;
+            }
+        }
+    });
+    
+    actualizarResumenGreedy();
+}
+
+function actualizarResumenGreedy() {
+    const summary = document.getElementById('fuel-selection-summary');
+    const btnDistribuir = document.getElementById('btn-fuel-distribuir');
+    const count = camionesSeleccionadosGreedy.size;
+    
+    if (!summary || !btnDistribuir) return;
+    
+    if (count === 0) {
+        summary.style.display = 'none';
+        btnDistribuir.disabled = true;
+        return;
+    }
+    
+    summary.style.display = 'flex';
+    btnDistribuir.disabled = false;
+    
+    let combustibleNecesario = 0;
+    camionesSeleccionadosGreedy.forEach(id => {
+        const camion = todosLosCamionesGreedy.find(c => c.id === id);
+        if (camion) {
+            combustibleNecesario += camion.fuelNeeded || 0;
+        }
+    });
+    
+    document.getElementById('fuel-selected-count').textContent = count;
+    document.getElementById('fuel-needed-total').textContent = combustibleNecesario;
+}
+
+function actualizarContadoresGreedy() {
+    const available = todosLosCamionesGreedy.filter(c => c.status === 'AVAILABLE').length;
+    const bajoCombustible = todosLosCamionesGreedy.filter(c => (c.fuelPercentage || 0) < 30).length;
+    
+    document.getElementById('greedy-count-todos').textContent = todosLosCamionesGreedy.length;
+    document.getElementById('greedy-count-available').textContent = available;
+    document.getElementById('greedy-count-bajo').textContent = bajoCombustible;
+}
+
+function filtrarCamionesGreedy(filtro) {
+    filtroActualGreedy = filtro;
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-filter-small').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const camionesFiltrados = filtrarCamionesPorFiltroGreedy(todosLosCamionesGreedy, filtro);
+    mostrarCamionesGreedy(camionesFiltrados);
+}
+
+function filtrarCamionesPorFiltroGreedy(camiones, filtro) {
+    switch(filtro) {
+        case 'available':
+            return camiones.filter(c => c.status === 'AVAILABLE');
+        case 'bajo':
+            return camiones.filter(c => (c.fuelPercentage || 0) < 30);
+        default:
+            return camiones;
+    }
+}
+
+async function distribuirCombustiblePersonalizado() {
+    if (camionesSeleccionadosGreedy.size === 0) {
+        showResult('fuel-result', { error: '⚠️ Por favor selecciona al menos un camión' });
+        return;
+    }
+    
+    const combustible = parseInt(document.getElementById('fuel-amount').value);
+    if (!combustible || combustible <= 0) {
+        showResult('fuel-result', { error: '⚠️ Por favor ingresa una cantidad válida de combustible' });
+        return;
+    }
+    
+    showLoading();
+    try {
+        // Calcular distribución usando algoritmo Greedy localmente
+        const camionesSeleccionados = [];
+        camionesSeleccionadosGreedy.forEach(id => {
+            const camion = todosLosCamionesGreedy.find(c => c.id === id);
+            if (camion) {
+                camionesSeleccionados.push({
+                    ...camion,
+                    necesidad: camion.fuelNeeded || 0
+                });
+            }
+        });
+        
+        // Ordenar por menor porcentaje de combustible (Greedy)
+        camionesSeleccionados.sort((a, b) => {
+            const porcentajeA = (a.currentFuel / a.fuelCapacity) * 100;
+            const porcentajeB = (b.currentFuel / b.fuelCapacity) * 100;
+            return porcentajeA - porcentajeB;
+        });
+        
+        // Distribuir combustible
+        let combustibleRestante = combustible;
+        let totalAsignado = 0;
+        let camionesLlenos = 0;
+        const asignacion = {};
+        const camionesDetalle = [];
+        
+        camionesSeleccionados.forEach(camion => {
+            let cantidadAsignada = 0;
+            
+            if (combustibleRestante > 0 && camion.necesidad > 0) {
+                cantidadAsignada = Math.min(camion.necesidad, combustibleRestante);
+                combustibleRestante -= cantidadAsignada;
+                totalAsignado += cantidadAsignada;
+                
+                if (cantidadAsignada === camion.necesidad) {
+                    camionesLlenos++;
+                }
+            } else if (camion.necesidad === 0) {
+                camionesLlenos++;
+            }
+            
+            asignacion[camion.id] = cantidadAsignada;
+            
+            const combustibleFinal = camion.currentFuel + cantidadAsignada;
+            const porcentajeFinal = (combustibleFinal / camion.fuelCapacity) * 100;
+            
+            camionesDetalle.push({
+                truckId: camion.id,
+                licensePlate: camion.licensePlate,
+                capacidadTotal: camion.fuelCapacity,
+                combustibleActual: camion.currentFuel,
+                necesidad: camion.necesidad,
+                combustibleAsignado: cantidadAsignada,
+                combustibleFinal: combustibleFinal,
+                porcentajeFinal: porcentajeFinal
+            });
+        });
+        
+        const data = {
+            asignacion: asignacion,
+            totalCamionesSeleccionados: camionesSeleccionados.length,
+            camionesLlenos: camionesLlenos,
+            combustibleDisponible: combustible,
+            combustibleAsignado: totalAsignado,
+            combustibleRestante: combustibleRestante,
+            camionesDetalle: camionesDetalle,
+            algoritmo: 'Greedy - Distribución Personalizada',
+            estrategia: 'Prioriza camiones seleccionados con menor porcentaje de combustible'
+        };
+        
+        showResultFuelPersonalizado(data);
+    } catch (error) {
+        showResult('fuel-result', { error: 'Error: ' + error.message });
+    } finally {
+        hideLoading();
+    }
+}
+
+function showResultFuelPersonalizado(data) {
+    // Layout principal: Grid de 2 columnas
+    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">';
+    
+    // ===== COLUMNA IZQUIERDA: CAMIONES =====
+    html += '<div>';
+    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
+    html += '<i class="fas fa-truck"></i> Camiones Seleccionados';
+    html += '</h3>';
+    html += '<div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">';
+    
+    data.camionesDetalle.forEach(camion => {
+        const porcentaje = camion.porcentajeFinal.toFixed(1);
+        const fuelClass = getFuelClassGreedy(porcentaje);
+        const porcentajeInicial = ((camion.combustibleActual / camion.capacidadTotal) * 100).toFixed(1);
+        
+        html += `
+            <div style="background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 2px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-color);">${camion.truckId}</div>
+                    <div style="background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${camion.licensePlate}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin: 0.25rem 0;">
+                    <span style="color: var(--text-secondary);">Antes:</span>
+                    <strong>${camion.combustibleActual}L (${porcentajeInicial}%)</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin: 0.25rem 0;">
+                    <span style="color: var(--text-secondary);">Ahora:</span>
+                    <strong style="color: var(--success-color);">${camion.combustibleFinal}L (${porcentaje}%)</strong>
+                </div>
+                <div style="height: 18px; background: var(--dark-bg); border-radius: 9px; overflow: hidden; margin-top: 0.5rem;">
+                    <div class="truck-fuel-fill ${fuelClass}" style="width: ${porcentaje}%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">
+                        ${porcentaje}%
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    html += '</div>'; // Fin columna izquierda
+    
+    // ===== COLUMNA DERECHA: ASIGNACIÓN PASO A PASO =====
+    html += '<div>';
+    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
+    html += '<i class="fas fa-list-ol"></i> Asignación Paso a Paso';
+    html += '</h3>';
+    html += '<div style="max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">';
+    
+    // Generar pasos basados en el orden de asignación
+    let pasoNum = 1;
+    let combustibleRestante = data.combustibleDisponible;
+    
+    data.camionesDetalle.forEach(camion => {
+        if (camion.combustibleAsignado > 0) {
+            html += `
+                <div style="background: var(--card-bg); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 4px solid var(--primary-color);">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                        <div style="background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
+                            ${pasoNum}
+                        </div>
+                        <div style="font-weight: 600; color: var(--text-primary);">Asignar a ${camion.truckId}</div>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-left: 2.5rem;">
+                        Greedy asigna combustible al camión con menor nivel.
+                    </div>
+                    <div style="background: var(--dark-bg); padding: 0.75rem; border-radius: 6px; margin-top: 0.5rem; margin-left: 2.5rem; font-size: 0.85rem;">
+                        <div style="color: var(--primary-color); margin-bottom: 0.25rem;">
+                            <strong>Asignado:</strong> ${camion.combustibleAsignado}L | 
+                            <strong>Total asignado:</strong> ${data.combustibleDisponible - combustibleRestante + camion.combustibleAsignado}L
+                        </div>
+                    </div>
+                </div>
+            `;
+            combustibleRestante -= camion.combustibleAsignado;
+            pasoNum++;
+        }
+    });
+    
+    html += '</div>';
+    html += '</div>'; // Fin columna derecha
+    
+    html += '</div>'; // Fin grid principal
+    
+    // ===== ESTADÍSTICAS DE COMBUSTIBLE =====
+    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem;">';
+    
+    html += `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
+                <i class="fas fa-oil-can"></i> Combustible Disponible
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 700;">
+                ${data.combustibleDisponible}L
+            </div>
+        </div>
+    `;
+    
+    html += `
+        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
+                <i class="fas fa-check-circle"></i> Combustible Asignado
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 700;">
+                ${data.combustibleAsignado}L
+            </div>
+        </div>
+    `;
+    
+    html += `
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
+            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
+                <i class="fas fa-battery-half"></i> Combustible Restante
+            </div>
+            <div style="font-size: 2.5rem; font-weight: 700;">
+                ${data.combustibleRestante}L
+            </div>
+        </div>
+    `;
+    
+    html += '</div>';
+    
+    // ===== ¿CÓMO FUNCIONA EL ALGORITMO? =====
+    html += '<div style="margin-top: 2rem; background: rgba(102, 126, 234, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid var(--primary-color);">';
+    html += '<h3 style="margin-bottom: 1rem; color: var(--primary-color); display: flex; align-items: center; gap: 0.5rem;">';
+    html += '<i class="fas fa-brain"></i> ¿Cómo Funciona el Algoritmo?';
+    html += '</h3>';
+    html += '<div style="color: var(--text-primary); line-height: 1.8; font-size: 0.95rem;">';
+    html += '<p style="margin-bottom: 0.75rem;"><strong>Algoritmo Greedy</strong> - Estrategia de decisiones locales óptimas para distribución de recursos.</p>';
+    html += '<p style="margin-bottom: 0.5rem;"><strong>Objetivo:</strong> Distribuir combustible priorizando los camiones con menor nivel de combustible actual.</p>';
+    html += '</div>';
+    html += '</div>';
+    
+    // ===== PASO A PASO DETALLADO =====
+    html += '<div style="margin-top: 1.5rem; background: var(--card-bg); padding: 1.5rem; border-radius: 10px;">';
+    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
+    html += '<i class="fas fa-clipboard-list"></i> Paso a Paso Detallado del Algoritmo';
+    html += '</h3>';
+    html += '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+    
+    // Paso 1
+    html += `
+        <div style="display: flex; gap: 1rem; align-items: start;">
+            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                1
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Obtener camiones seleccionados</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Se obtienen los ${data.totalCamionesSeleccionados} camiones que seleccionaste de la base de datos Neo4j con su información de combustible actual.</div>
+            </div>
+        </div>
+    `;
+    
+    // Paso 2
+    html += `
+        <div style="display: flex; gap: 1rem; align-items: start;">
+            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                2
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Calcular necesidad de combustible</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Para cada camión se calcula: <code style="background: var(--dark-bg); padding: 2px 6px; border-radius: 3px;">necesidad = capacidad - combustibleActual</code></div>
+            </div>
+        </div>
+    `;
+    
+    // Paso 3
+    html += `
+        <div style="display: flex; gap: 1rem; align-items: start;">
+            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                3
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Ordenar por prioridad (Greedy)</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Se ordenan los camiones de <strong>menor a mayor porcentaje</strong> de combustible. Los más vacíos tienen mayor prioridad.</div>
+            </div>
+        </div>
+    `;
+    
+    // Paso 4
+    html += `
+        <div style="display: flex; gap: 1rem; align-items: start;">
+            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                4
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Asignar combustible secuencialmente</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Para cada camión (en orden de prioridad), asignar: <code style="background: var(--dark-bg); padding: 2px 6px; border-radius: 3px;">min(necesidad, combustibleRestante)</code></div>
+            </div>
+        </div>
+    `;
+    
+    // Paso 5
+    html += `
+        <div style="display: flex; gap: 1rem; align-items: start;">
+            <div style="background: var(--success-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                ✓
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--success-color); margin-bottom: 0.25rem;">Resultado Final</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">Se distribuyeron <strong>${data.combustibleAsignado}L</strong> entre ${data.totalCamionesSeleccionados} camiones, dejando <strong>${data.camionesLlenos} camiones llenos</strong> al 100%.</div>
+            </div>
+        </div>
+    `;
+    
+    html += '</div>'; // Fin pasos detallados
+    html += '</div>'; // Fin sección paso a paso
+    
+    // Complejidad
+    html += '<div style="margin-top: 1rem; padding: 1rem; background: var(--dark-bg); border-radius: 8px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">';
+    html += '<i class="fas fa-clock"></i> <strong>Complejidad:</strong> O(n log n) donde n = número de camiones seleccionados';
+    html += '</div>';
+    
+    // Mostrar en el modal
+    mostrarModal('🚛 Distribución de Combustible - Algoritmo Greedy', html);
+}
+
+function getFuelClassGreedy(percentage) {
+    if (percentage >= 90) return 'fuel-full';
+    if (percentage >= 60) return 'fuel-high';
+    if (percentage >= 30) return 'fuel-medium';
+    return 'fuel-low';
+}
+
+function getStatusClassGreedy(status) {
+    switch(status) {
+        case 'AVAILABLE': return 'available';
+        case 'IN_TRANSIT': return 'transit';
+        case 'MAINTENANCE': return 'maintenance';
+        default: return 'available';
+    }
+}
+
+function getStatusTextGreedy(status) {
+    switch(status) {
+        case 'AVAILABLE': return '✅ Disponible';
+        case 'IN_TRANSIT': return '🚚 En Tránsito';
+        case 'MAINTENANCE': return '🔧 Mantenimiento';
+        default: return status;
+    }
+}
+
+async function distribuirPresupuesto() {
+    // Validar que haya proyectos agregados
+        if (proyectosBudget.length === 0) {
+        showResult('budget-result', { 
+            error: '⚠️ Por favor agrega al menos un proyecto antes de distribuir el presupuesto' 
+        });
+        return;
+    }
+    
+    const presupuestoTotal = parseFloat(document.getElementById('budget-total').value);
+    
+    // Validar presupuesto
+    if (!presupuestoTotal || presupuestoTotal <= 0) {
+        showResult('budget-result', { 
+            error: '⚠️ Por favor ingresa un presupuesto válido mayor a 0' 
+        });
+        return;
+    }
+    
+    showLoading();
+    try {
         const response = await fetch(`${API_BASE}/greedy/distribuir-presupuesto?presupuestoTotal=${presupuestoTotal}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3283,19 +4031,25 @@ function eliminarProyecto(index) {
 }
 
 async function resolverMochila() {
+    // Validar que se hayan agregado proyectos
+    if (proyectosMochila.length === 0) {
+        showResult('knapsack-result', { 
+            error: '⚠️ Por favor agrega al menos un proyecto antes de resolver el problema de la mochila'
+        });
+        return;
+    }
+    
+    const presupuesto = parseInt(document.getElementById('knapsack-budget').value);
+    
+    if (isNaN(presupuesto) || presupuesto <= 0) {
+        showResult('knapsack-result', { 
+            error: '⚠️ Por favor ingresa un presupuesto válido'
+        });
+        return;
+    }
+    
     showLoading();
     try {
-        const presupuesto = parseInt(document.getElementById('knapsack-budget').value);
-        
-        if (proyectosMochila.length === 0) {
-            // Usar datos de ejemplo
-            proyectosMochila = [
-                { nombre: "Proyecto A", costo: 100, beneficio: 150 },
-                { nombre: "Proyecto B", costo: 200, beneficio: 250 },
-                { nombre: "Proyecto C", costo: 150, beneficio: 200 }
-            ];
-        }
-        
         const request = {
             proyectos: proyectosMochila,
             presupuesto,
@@ -3333,22 +4087,27 @@ async function resolverMochila() {
 }
 
 async function compararMochilaGreedy() {
+    // Validar que se hayan agregado proyectos
+    if (proyectosMochila.length === 0) {
+        showResult('compare-knapsack-result', { 
+            error: '⚠️ Por favor agrega al menos un proyecto antes de comparar algoritmos'
+        });
+        return;
+    }
+    
+    const presupuesto = parseInt(document.getElementById('compare-knapsack-budget').value);
+    
+    if (isNaN(presupuesto) || presupuesto <= 0) {
+        showResult('compare-knapsack-result', { 
+            error: '⚠️ Por favor ingresa un presupuesto válido'
+        });
+        return;
+    }
+    
     showLoading();
     try {
-        const presupuesto = parseInt(document.getElementById('compare-knapsack-budget').value);
-        
-        // Usar los proyectos del formulario principal
-        let proyectos = proyectosMochila;
-        if (proyectos.length === 0) {
-            proyectos = [
-                { nombre: "Proyecto A", costo: 100, beneficio: 150 },
-                { nombre: "Proyecto B", costo: 200, beneficio: 250 },
-                { nombre: "Proyecto C", costo: 150, beneficio: 200 }
-            ];
-        }
-        
         const request = {
-            proyectos,
+            proyectos: proyectosMochila,
             presupuesto
         };
         

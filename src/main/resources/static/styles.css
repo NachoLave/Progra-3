@@ -4109,3 +4109,187 @@ body {
     }
 }
 
+/* ==================================== */
+/* SELECCIÓN DE CAMIONES - GREEDY */
+/* ==================================== */
+
+.btn-filter-small {
+    padding: 0.4rem 0.8rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.btn-filter-small:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-color);
+}
+
+.btn-filter-small.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+.selectable-trucks-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.75rem;
+    background: var(--dark-bg);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.selectable-truck-card {
+    padding: 1rem;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.selectable-truck-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    transform: translateY(-2px);
+}
+
+.selectable-truck-card.selected {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+}
+
+.truck-checkbox-small {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.truck-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.truck-id-small {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.truck-plate-small {
+    background: var(--primary-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.truck-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+    color: var(--text-secondary);
+}
+
+.truck-info-row strong {
+    color: var(--text-primary);
+}
+
+.truck-fuel-bar {
+    height: 20px;
+    background: var(--dark-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.truck-fuel-fill {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    transition: width 0.3s ease;
+}
+
+.fuel-low { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+.fuel-medium { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+.fuel-high { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
+.fuel-full { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+
+.truck-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+}
+
+.badge-available { background: #059669; color: white; }
+.badge-transit { background: #0ea5e9; color: white; }
+.badge-maintenance { background: #dc2626; color: white; }
+
+.selection-summary-compact {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.loading-spinner i {
+    font-size: 2rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-secondary {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+}
+
