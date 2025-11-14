@@ -530,6 +530,139 @@ public class GraphService {
                 .sum();
     }
     
+    /**
+     * Implementación de BFS (Breadth-First Search) para explorar todas las rutas desde un origen
+     * Útil para encontrar todos los centros alcanzables y rutas alternativas
+     * Complejidad: O(V + E)
+     * 
+     * @param vertices Número de vértices
+     * @param source Vértice origen
+     * @param adjacencyList Lista de adyacencia
+     * @return Lista de vértices visitados en orden BFS y sus distancias
+     */
+    public Map<String, Object> bfs(int vertices, int source, Map<Integer, List<int[]>> adjacencyList) {
+        List<Integer> visitOrder = new ArrayList<>();
+        Map<Integer, Integer> distances = new HashMap<>();
+        Map<Integer, Integer> parent = new HashMap<>();
+        boolean[] visited = new boolean[vertices];
+        
+        Queue<Integer> queue = new LinkedList<>();
+        queue.offer(source);
+        visited[source] = true;
+        distances.put(source, 0);
+        parent.put(source, -1);
+        
+        while (!queue.isEmpty()) {
+            int current = queue.poll();
+            visitOrder.add(current);
+            
+            if (adjacencyList.containsKey(current)) {
+                for (int[] neighbor : adjacencyList.get(current)) {
+                    int v = neighbor[0];
+                    if (!visited[v]) {
+                        visited[v] = true;
+                        distances.put(v, distances.get(current) + 1);
+                        parent.put(v, current);
+                        queue.offer(v);
+                    }
+                }
+            }
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("visitOrder", visitOrder);
+        result.put("distances", distances);
+        result.put("parent", parent);
+        result.put("reachableVertices", visitOrder.size());
+        return result;
+    }
+    
+    /**
+     * Implementación de DFS (Depth-First Search) para explorar rutas en profundidad
+     * Útil para encontrar caminos específicos y detectar ciclos
+     * Complejidad: O(V + E)
+     * 
+     * @param vertices Número de vértices
+     * @param source Vértice origen
+     * @param adjacencyList Lista de adyacencia
+     * @return Lista de vértices visitados en orden DFS y todos los caminos encontrados
+     */
+    public Map<String, Object> dfs(int vertices, int source, Map<Integer, List<int[]>> adjacencyList) {
+        List<Integer> visitOrder = new ArrayList<>();
+        List<List<Integer>> allPaths = new ArrayList<>();
+        boolean[] visited = new boolean[vertices];
+        List<Integer> currentPath = new ArrayList<>();
+        
+        dfsRecursive(source, adjacencyList, visited, visitOrder, currentPath, allPaths);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("visitOrder", visitOrder);
+        result.put("allPaths", allPaths);
+        result.put("totalPaths", allPaths.size());
+        return result;
+    }
+    
+    /**
+     * Método recursivo auxiliar para DFS
+     */
+    private void dfsRecursive(int vertex, Map<Integer, List<int[]>> adjacencyList, 
+                             boolean[] visited, List<Integer> visitOrder,
+                             List<Integer> currentPath, List<List<Integer>> allPaths) {
+        visited[vertex] = true;
+        visitOrder.add(vertex);
+        currentPath.add(vertex);
+        
+        // Guardar el camino actual
+        allPaths.add(new ArrayList<>(currentPath));
+        
+        if (adjacencyList.containsKey(vertex)) {
+            for (int[] neighbor : adjacencyList.get(vertex)) {
+                int v = neighbor[0];
+                if (!visited[v]) {
+                    dfsRecursive(v, adjacencyList, visited, visitOrder, currentPath, allPaths);
+                }
+            }
+        }
+        
+        // Backtrack
+        currentPath.remove(currentPath.size() - 1);
+        visited[vertex] = false; // Permitir explorar otros caminos
+    }
+    
+    /**
+     * BFS para encontrar todos los caminos entre dos vértices
+     */
+    public List<List<Integer>> bfsFindAllPaths(int vertices, int source, int destination,
+                                               Map<Integer, List<int[]>> adjacencyList) {
+        List<List<Integer>> allPaths = new ArrayList<>();
+        Queue<List<Integer>> queue = new LinkedList<>();
+        List<Integer> initialPath = new ArrayList<>();
+        initialPath.add(source);
+        queue.offer(initialPath);
+        
+        while (!queue.isEmpty()) {
+            List<Integer> currentPath = queue.poll();
+            int lastVertex = currentPath.get(currentPath.size() - 1);
+            
+            if (lastVertex == destination) {
+                allPaths.add(new ArrayList<>(currentPath));
+            } else {
+                if (adjacencyList.containsKey(lastVertex)) {
+                    for (int[] neighbor : adjacencyList.get(lastVertex)) {
+                        int v = neighbor[0];
+                        if (!currentPath.contains(v)) { // Evitar ciclos
+                            List<Integer> newPath = new ArrayList<>(currentPath);
+                            newPath.add(v);
+                            queue.offer(newPath);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return allPaths;
+    }
+    
     // Métodos auxiliares para Union-Find (Kruskal)
     private int find(int[] parent, int x) {
         if (parent[x] != x) {

@@ -4,10 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TransRoute S.A. - Sistema de Logística Inteligente</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=7">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -45,6 +57,18 @@
             <button class="nav-tab" data-module="dynamic">
                 <i class="fas fa-chart-line"></i>
                 <span>Módulo 5: Programación Dinámica</span>
+            </button>
+            <button class="nav-tab" data-module="bfs-dfs">
+                <i class="fas fa-search"></i>
+                <span>Módulo 6: BFS/DFS</span>
+            </button>
+            <button class="nav-tab" data-module="backtracking">
+                <i class="fas fa-undo"></i>
+                <span>Módulo 7: Backtracking</span>
+            </button>
+            <button class="nav-tab" data-module="branch-bound">
+                <i class="fas fa-sitemap"></i>
+                <span>Módulo 8: Branch & Bound</span>
             </button>
         </nav>
 
@@ -458,6 +482,328 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Módulo 6: BFS/DFS -->
+            <div class="module-content" id="module-bfs-dfs">
+                <div class="module-header">
+                    <h2><i class="fas fa-search"></i> Módulo 6: BFS y DFS</h2>
+                    <p>Exploración de rutas. BFS O(V + E), DFS O(V + E)</p>
+                    <div class="info-box" style="margin-top: 1rem; background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                        <p style="margin: 0; color: var(--text-primary);">
+                            <i class="fas fa-lightbulb" style="color: #fbbf24;"></i> <strong>¿Por qué usar BFS/DFS en logística?</strong><br>
+                            Estos algoritmos nos permiten <strong>explorar la red de distribución</strong> para encontrar todos los centros alcanzables desde un punto de origen. 
+                            <strong>BFS</strong> es ideal para encontrar rutas alternativas cuando hay interrupciones, mientras que <strong>DFS</strong> ayuda a descubrir caminos específicos 
+                            y detectar conexiones ocultas en la red. Útiles para planificación de emergencias y análisis de conectividad.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-layer-group"></i> BFS - Exploración por Niveles</h3>
+                        <p class="help-text">
+                            <i class="fas fa-info-circle"></i> <strong>Caso de uso:</strong> Encuentra todos los centros alcanzables nivel por nivel. 
+                            Útil cuando necesitas identificar rutas alternativas o centros cercanos en caso de emergencias o interrupciones de ruta.
+                        </p>
+                        <div class="form-group">
+                            <label><i class="fas fa-database"></i> Datos de Neo4j:</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona centros, rutas y el centro de origen desde Neo4j
+                                </p>
+                                <button type="button" class="btn-filter-small" onclick="cargarDatosBFS()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                    <i class="fas fa-sync-alt"></i> Cargar desde Neo4j
+                                </button>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem; margin: 0;">
+                                            <i class="fas fa-warehouse"></i> Centros de Distribución:
+                                        </label>
+                                        <button type="button" class="btn-filter-small" onclick="seleccionarTodos('bfs', 'center')" style="background: var(--primary-color); border-color: var(--primary-color); color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem;">
+                                            <i class="fas fa-check-square"></i> Seleccionar Todos
+                                        </button>
+                                    </div>
+                                    <div class="loading-spinner" id="bfs-centers-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="bfs-centers-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem; margin: 0;">
+                                            <i class="fas fa-route"></i> Rutas:
+                                        </label>
+                                        <button type="button" class="btn-filter-small" onclick="seleccionarTodos('bfs', 'route')" style="background: var(--primary-color); border-color: var(--primary-color); color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem;">
+                                            <i class="fas fa-check-square"></i> Seleccionar Todos
+                                        </button>
+                                    </div>
+                                    <div class="loading-spinner" id="bfs-routes-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="bfs-routes-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-play-circle"></i> Centro de Origen:
+                                    </label>
+                                    <select id="bfs-source-select" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="">Selecciona un centro de origen</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularBFS()">
+                            <i class="fas fa-search"></i> Explorar con BFS
+                        </button>
+                        <div id="bfs-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-sitemap"></i> DFS - Exploración en Profundidad</h3>
+                        <p class="help-text">
+                            <i class="fas fa-info-circle"></i> <strong>Caso de uso:</strong> Explora todos los caminos posibles desde un origen en profundidad. 
+                            Ideal para descubrir rutas específicas, detectar ciclos en la red y analizar conexiones profundas entre centros de distribución.
+                        </p>
+                        <div class="form-group">
+                            <label><i class="fas fa-database"></i> Datos de Neo4j:</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona centros, rutas y el centro de origen desde Neo4j
+                                </p>
+                                <button type="button" class="btn-filter-small" onclick="cargarDatosDFS()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                    <i class="fas fa-sync-alt"></i> Cargar desde Neo4j
+                                </button>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem; margin: 0;">
+                                            <i class="fas fa-warehouse"></i> Centros de Distribución:
+                                        </label>
+                                        <button type="button" class="btn-filter-small" onclick="seleccionarTodos('dfs', 'center')" style="background: var(--primary-color); border-color: var(--primary-color); color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem;">
+                                            <i class="fas fa-check-square"></i> Seleccionar Todos
+                                        </button>
+                                    </div>
+                                    <div class="loading-spinner" id="dfs-centers-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="dfs-centers-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.9rem; margin: 0;">
+                                            <i class="fas fa-route"></i> Rutas:
+                                        </label>
+                                        <button type="button" class="btn-filter-small" onclick="seleccionarTodos('dfs', 'route')" style="background: var(--primary-color); border-color: var(--primary-color); color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem;">
+                                            <i class="fas fa-check-square"></i> Seleccionar Todos
+                                        </button>
+                                    </div>
+                                    <div class="loading-spinner" id="dfs-routes-loading" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                    <div id="dfs-routes-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-play-circle"></i> Centro de Origen:
+                                    </label>
+                                    <select id="dfs-source-select" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="">Selecciona un centro de origen</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularDFS()">
+                            <i class="fas fa-sitemap"></i> Explorar con DFS
+                        </button>
+                        <div id="dfs-result" class="result-box"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3><i class="fas fa-route"></i> BFS - Todos los Caminos</h3>
+                        <p class="help-text">
+                            <i class="fas fa-info-circle"></i> <strong>Caso de uso:</strong> Encuentra todas las rutas alternativas entre dos centros. 
+                            Esencial para planificación de contingencias: si una ruta principal está bloqueada, puedes elegir entre múltiples alternativas.
+                        </p>
+                        <div class="form-group">
+                            <label><i class="fas fa-database"></i> Datos de Neo4j:</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona centros, rutas, origen y destino desde Neo4j
+                                </p>
+                                <button type="button" class="btn-filter-small" onclick="cargarDatosBFSPaths()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                    <i class="fas fa-sync-alt"></i> Cargar desde Neo4j
+                                </button>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-warehouse"></i> Centros de Distribución:
+                                    </label>
+                                    <div id="bfs-paths-centers-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-route"></i> Rutas:
+                                    </label>
+                                    <div id="bfs-paths-routes-container" class="selectable-items-container"></div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-play-circle"></i> Centro de Origen:
+                                    </label>
+                                    <select id="bfs-paths-source-select" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="">Selecciona origen</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-flag-checkered"></i> Centro de Destino:
+                                    </label>
+                                    <select id="bfs-paths-dest-select" class="form-control" style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="">Selecciona destino</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularBFSPaths()">
+                            <i class="fas fa-route"></i> Encontrar Todos los Caminos
+                        </button>
+                        <div id="bfs-paths-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 7: Backtracking -->
+            <div class="module-content" id="module-backtracking">
+                <div class="module-header">
+                    <h2><i class="fas fa-undo"></i> Módulo 7: Backtracking</h2>
+                    <p>Planificación de secuencias óptimas. Complejidad: O(n!) optimizado</p>
+                    <div class="info-box" style="margin-top: 1rem; background: rgba(139, 92, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                        <p style="margin: 0; color: var(--text-primary);">
+                            <i class="fas fa-lightbulb" style="color: #fbbf24;"></i> <strong>¿Por qué usar Backtracking en logística?</strong><br>
+                            El <strong>Backtracking</strong> es perfecto para encontrar la <strong>mejor secuencia de visitas a centros de distribución</strong> cuando necesitas 
+                            maximizar la prioridad (centros más importantes primero) pero respetando restricciones estrictas de presupuesto y distancia. 
+                            Es como un planificador inteligente que prueba todas las combinaciones posibles y "vuelve atrás" cuando una opción no funciona, 
+                            encontrando la solución óptima. Ideal para planificar rutas de reparto con múltiples paradas y restricciones.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-list-ol"></i> Mejor Secuencia de Visitas</h3>
+                        <p class="help-text">
+                            <i class="fas fa-info-circle"></i> <strong>Caso de uso:</strong> Planifica la mejor secuencia para visitar múltiples centros, 
+                            priorizando los más importantes (alta prioridad) mientras respetas tu presupuesto y límite de distancia. 
+                            El algoritmo prueba todas las combinaciones y encuentra la óptima.
+                        </p>
+                        <div class="form-group">
+                            <label><i class="fas fa-warehouse"></i> Selecciona Centros desde Neo4j:</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona los centros que deseas incluir en la secuencia
+                                </p>
+                                <button type="button" class="btn-filter-small" onclick="cargarCentrosBacktracking()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                    <i class="fas fa-sync-alt"></i> Cargar desde Neo4j
+                                </button>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div class="loading-spinner" id="backtracking-centers-loading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando centros...
+                                </div>
+                                <div id="backtracking-centers-container" class="selectable-items-container"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-wallet"></i> Presupuesto Máximo:</label>
+                            <input type="number" id="backtracking-presupuesto" placeholder="1000" value="1000" min="0" step="100">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-route"></i> Distancia Máxima:</label>
+                            <input type="number" id="backtracking-distancia" placeholder="500" value="500" min="0" step="50">
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularBacktracking()">
+                            <i class="fas fa-calculator"></i> Encontrar Mejor Secuencia
+                        </button>
+                        <div id="backtracking-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Módulo 8: Branch & Bound -->
+            <div class="module-content" id="module-branch-bound">
+                <div class="module-header">
+                    <h2><i class="fas fa-sitemap"></i> Módulo 8: Branch & Bound</h2>
+                    <p>Optimización de rutas con restricciones. Complejidad: O(n!) optimizado con podas</p>
+                    <div class="info-box" style="margin-top: 1rem; background: rgba(236, 72, 153, 0.1); padding: 1rem; border-radius: 8px;">
+                        <p style="margin: 0; color: var(--text-primary);">
+                            <i class="fas fa-lightbulb" style="color: #fbbf24;"></i> <strong>¿Por qué usar Branch & Bound en logística?</strong><br>
+                            El <strong>Branch & Bound</strong> resuelve el problema del "vendedor viajero" (TSP) pero con restricciones reales: presupuesto limitado y distancia máxima. 
+                            Es el algoritmo más eficiente para encontrar la <strong>ruta óptima que visita todos los centros</strong> minimizando costo total. 
+                            Usa "ramificación" (explora opciones) y "poda" (elimina rutas que no pueden ser mejores), garantizando la solución óptima. 
+                            Perfecto para planificar rutas de camiones que deben visitar múltiples centros en un solo viaje.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-route"></i> Ruta Óptima Completa</h3>
+                        <p class="help-text">
+                            <i class="fas fa-info-circle"></i> <strong>Caso de uso:</strong> Encuentra la ruta más eficiente que visita todos los centros seleccionados 
+                            minimizando el costo total. Similar al problema del vendedor viajero, pero con restricciones de presupuesto y distancia. 
+                            Ideal para planificar rutas de camiones de reparto que deben cubrir múltiples destinos en un solo viaje.
+                        </p>
+                        <div class="form-group">
+                            <label><i class="fas fa-warehouse"></i> Selecciona Centros desde Neo4j:</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle"></i> Selecciona todos los centros que el camión debe visitar
+                                </p>
+                                <button type="button" class="btn-filter-small" onclick="cargarCentrosBranchBound()" style="background: var(--success-color); border-color: var(--success-color); color: white;">
+                                    <i class="fas fa-sync-alt"></i> Cargar desde Neo4j
+                                </button>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div class="loading-spinner" id="branch-bound-centers-loading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando centros...
+                                </div>
+                                <div id="branch-bound-centers-container" class="selectable-items-container"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-wallet"></i> Presupuesto Máximo:</label>
+                            <input type="number" id="branch-bound-presupuesto" placeholder="2000" value="2000" min="0" step="100">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-route"></i> Distancia Máxima:</label>
+                            <input type="number" id="branch-bound-distancia" placeholder="1000" value="1000" min="0" step="50">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="branch-bound-regresar" style="margin-right: 0.5rem;">
+                                <i class="fas fa-home"></i> Regresar al punto de origen
+                            </label>
+                        </div>
+                        <button class="btn btn-primary" onclick="calcularBranchBound()">
+                            <i class="fas fa-calculator"></i> Encontrar Ruta Óptima
+                        </button>
+                        <div id="branch-bound-result" class="result-box"></div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Panel Lateral Derecho - Datos Neo4j -->
@@ -507,8 +853,8 @@
         </div>
     </div>
 
-    <script src="visualizer.js"></script>
-    <script src="app.js"></script>
+    <script src="visualizer.js?v=10"></script>
+    <script src="app.js?v=10"></script>
 </body>
 </html>
 

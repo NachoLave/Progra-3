@@ -36,6 +36,7 @@ public class GreedyService {
      * @return Lista de todos los camiones con su información
      */
     public List<Map<String, Object>> obtenerTodosCamiones() {
+        // NOTA: Este método necesita todos los camiones, así que findAll() está bien aquí
         List<Truck> trucks = truckRepository.findAll();
         List<Map<String, Object>> camionesInfo = new ArrayList<>();
         
@@ -65,6 +66,7 @@ public class GreedyService {
      * Obtiene camiones desde Neo4j y distribuye combustible usando sus capacidades
      */
     public Map<Integer, Integer> distribuirCombustibleDesdeNeo4j(int requiredAmount) {
+        // NOTA: Este método necesita todas las capacidades únicas, así que findAll() está bien aquí
         List<Truck> trucks = truckRepository.findAll();
         List<Integer> availableSizes = new ArrayList<>();
         
@@ -86,6 +88,7 @@ public class GreedyService {
      * Obtiene la cantidad total de combustible disponible en todos los camiones
      */
     public int obtenerCombustibleTotalDisponible() {
+        // NOTA: Este método necesita todos los camiones, así que findAll() está bien aquí
         List<Truck> trucks = truckRepository.findAll();
         return trucks.stream()
                 .filter(t -> t.getCurrentFuel() != null)
@@ -254,11 +257,8 @@ public class GreedyService {
      */
     public Map<String, Object> distribuirCombustiblePersonalizado(List<String> truckIds, int combustibleDisponible) {
         // Obtener solo los camiones seleccionados por el usuario
-        List<Truck> trucksSeleccionados = new ArrayList<>();
-        
-        for (String truckId : truckIds) {
-            truckRepository.findById(truckId).ifPresent(trucksSeleccionados::add);
-        }
+        // OPTIMIZACIÓN: Usar findAllByIds() en lugar de múltiples findById() para evitar problema N+1
+        List<Truck> trucksSeleccionados = truckRepository.findAllByIds(truckIds);
         
         if (trucksSeleccionados.isEmpty()) {
             Map<String, Object> resultado = new HashMap<>();
@@ -338,13 +338,8 @@ public class GreedyService {
      * @return Mapa con asignación: TruckID -> cantidad de combustible asignado
      */
     public Map<String, Object> distribuirCombustibleOptimizado(int combustibleDisponible) {
-        // Obtener todos los camiones disponibles de Neo4j
-        List<Truck> trucks = truckRepository.findAll();
-        
-        // Filtrar solo camiones AVAILABLE o IN_TRANSIT
-        List<Truck> trucksActivos = trucks.stream()
-                .filter(t -> "AVAILABLE".equals(t.getStatus()) || "IN_TRANSIT".equals(t.getStatus()))
-                .toList();
+        // OPTIMIZACIÓN: Usar consulta específica con filtro en Neo4j en lugar de findAll() + filtro en memoria
+        List<Truck> trucksActivos = truckRepository.findActiveTrucks();
         
         // Calcular necesidad de combustible para cada camión
         List<CamionConNecesidad> camionesConNecesidad = new ArrayList<>();
@@ -405,11 +400,8 @@ public class GreedyService {
      * @return Mapa con asignación: TruckID -> lista de cargas asignadas
      */
     public Map<String, Object> distribuirPesoGreedy(List<Integer> cargasDisponibles) {
-        // Obtener camiones disponibles de Neo4j
-        List<Truck> trucks = truckRepository.findAll();
-        List<Truck> trucksDisponibles = trucks.stream()
-                .filter(t -> "AVAILABLE".equals(t.getStatus()))
-                .toList();
+        // OPTIMIZACIÓN: Usar consulta específica con filtro en Neo4j en lugar de findAll() + filtro en memoria
+        List<Truck> trucksDisponibles = truckRepository.findByStatus("AVAILABLE");
         
         if (trucksDisponibles.isEmpty()) {
             Map<String, Object> resultado = new HashMap<>();
@@ -483,16 +475,13 @@ public class GreedyService {
     public Map<String, Object> asignarCargasDesdeNeo4j() {
         // Obtener datos de Neo4j
         List<DistributionCenter> centros = distributionCenterRepository.findAllOrderedByPriority();
-        List<Truck> trucks = truckRepository.findAll();
+        
+        // OPTIMIZACIÓN: Usar consulta específica con filtro en Neo4j en lugar de findAll() + filtro en memoria
+        List<Truck> trucksDisponibles = truckRepository.findByStatus("AVAILABLE");
         
         // Filtrar centros con carga pendiente
         List<DistributionCenter> centrosConCarga = centros.stream()
                 .filter(dc -> dc.getCurrentLoad() != null && dc.getCurrentLoad() > 0)
-                .toList();
-        
-        // Filtrar camiones disponibles
-        List<Truck> trucksDisponibles = trucks.stream()
-                .filter(t -> "AVAILABLE".equals(t.getStatus()))
                 .toList();
         
         if (trucksDisponibles.isEmpty()) {

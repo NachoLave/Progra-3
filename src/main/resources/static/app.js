@@ -68,18 +68,6 @@ function showResult(elementId, data, isJson = false) {
     else if (elementId.includes('dijkstra-result')) {
         modalContent = formatDijkstraResultModal(data);
         modalTitle = 'Caminos Más Cortos - Dijkstra';
-         
-         // Inicializar visualización después de que el modal se muestre
-         setTimeout(() => {
-             const vizContainer = document.querySelector('.modal-visualization-container[data-viz-data]');
-             if (vizContainer) {
-                 const vizData = JSON.parse(vizContainer.getAttribute('data-viz-data'));
-                 const svg = vizContainer.querySelector('.graph-svg');
-                 if (svg && vizData.edges && vizData.edges.length > 0) {
-                     visualizer.drawGraph(vizData.edges, svg, vizData.indexToCenter);
-                 }
-             }
-         }, 100);
     }
     // Módulo 5: Programación Dinámica
     else if (elementId.includes('knapsack-result') && !elementId.includes('compare')) {
@@ -89,6 +77,29 @@ function showResult(elementId, data, isJson = false) {
     else if (elementId.includes('compare-knapsack-result')) {
         modalContent = formatKnapsackComparisonModal(data);
         modalTitle = 'Comparación DP vs Greedy';
+    }
+    // Módulo 6: BFS/DFS
+    else if (elementId.includes('bfs-result') && !elementId.includes('paths')) {
+        modalContent = formatBFSResultModal(data);
+        modalTitle = 'Exploración BFS (Breadth-First Search)';
+    }
+    else if (elementId.includes('dfs-result')) {
+        modalContent = formatDFSResultModal(data);
+        modalTitle = 'Exploración DFS (Depth-First Search)';
+    }
+    else if (elementId.includes('bfs-paths-result')) {
+        modalContent = formatBFSPathsResultModal(data);
+        modalTitle = 'Todos los Caminos - BFS';
+    }
+    // Módulo 7: Backtracking
+    else if (elementId.includes('backtracking-result')) {
+        modalContent = formatBacktrackingResultModal(data);
+        modalTitle = 'Mejor Secuencia - Backtracking';
+    }
+    // Módulo 8: Branch & Bound
+    else if (elementId.includes('branch-bound-result')) {
+        modalContent = formatBranchBoundResultModal(data);
+        modalTitle = 'Ruta Óptima - Branch & Bound';
     }
     // Fallback: formato genérico
     else {
@@ -109,7 +120,39 @@ function mostrarModal(titulo, contenido) {
     // Iniciar visualizaciones automáticamente
     setTimeout(() => {
         iniciarVisualizaciones();
+        inicializarPestañasModal();
     }, 300);
+}
+
+// Función para inicializar las pestañas del modal
+function inicializarPestañasModal() {
+    const tabsContainers = document.querySelectorAll('.modal-tabs-container');
+    
+    tabsContainers.forEach(container => {
+        const tabButtons = container.querySelectorAll('.modal-tab-btn');
+        const tabPanes = container.querySelectorAll('.modal-tab-pane');
+        
+        tabButtons.forEach(btn => {
+            // Remover listeners anteriores si existen
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remover active de todos los botones y paneles
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabPanes.forEach(p => p.classList.remove('active'));
+                
+                // Agregar active al botón y panel seleccionado
+                this.classList.add('active');
+                const targetPane = container.querySelector(`[data-tab-content="${targetTab}"]`);
+                if (targetPane) {
+                    targetPane.classList.add('active');
+                }
+            });
+        });
+    });
 }
 
 // Función para iniciar visualizaciones paso a paso automáticamente
@@ -395,86 +438,344 @@ function formatRecursiveResultModal(data, elementId) {
     // Guardar datos para la visualización en un atributo
     const vizData = JSON.stringify({ costs: valoresIndividuales, tipo, valor });
     
+    // Obtener rutas seleccionadas para mostrar
+    const rutasDetalle = data.rutasDetalle ? data.rutasDetalle.split(', ') : [];
+    const rutasUsadas = data.rutasUsadas || rutasDetalle.length;
+    
+    // Crear lista de rutas seleccionadas con mejor formato
+    let rutasListHtml = '';
+    if (rutasDetalle.length > 0) {
+        rutasListHtml = `
+            <div class="selected-routes-section">
+                <div class="selected-routes-header">
+                    <i class="fas fa-route"></i>
+                    <h3>Rutas Seleccionadas (${rutasUsadas})</h3>
+                </div>
+                <div class="selected-routes-grid">
+                    ${rutasDetalle.map((ruta, index) => {
+                        const [id, ...rest] = ruta.split(':');
+                        const valorRuta = rest.join(':').trim();
+                        return `
+                            <div class="selected-route-item">
+                                <div class="route-item-number">${index + 1}</div>
+                                <div class="route-item-content">
+                                    <div class="route-item-id">${id}</div>
+                                    <div class="route-item-value">${valorRuta}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // ID único para las pestañas
+    const tabsId = `tabs-${Date.now()}`;
+    
     return `
         <!-- Visualización Paso a Paso (Full Width, Arriba) -->
         <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
             <div class="recursion-visualization" style="min-height: 300px;"></div>
         </div>
         
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
-                <div class="modal-highlight-box">
-                    <div class="modal-highlight-value">${valor.toFixed(2)}</div>
-                    <div class="modal-highlight-label">${unidad}</div>
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+                ${rutasListHtml ? `
+                <button class="modal-tab-btn" data-tab="rutas">
+                    <i class="fas fa-route"></i> Rutas
+                </button>
+                ` : ''}
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${valor.toFixed(2)}</div>
+                        <div class="modal-highlight-label">${tipo}</div>
+                        <div class="modal-highlight-subtitle">${unidad}</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-cog"></i></div>
+                            <div class="modal-stat-label">Método</div>
+                            <div class="modal-stat-value">${data.metodo || 'Recursivo'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="modal-stat-label">Complejidad</div>
+                            <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="modal-stat-label">Tiempo</div>
+                            <div class="modal-stat-value">${formatExecutionTime(data.tiempoEjecucionNanosegundos)}</div>
+                        </div>
+                        ${data.numeroTramos ? `
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
+                            <div class="modal-stat-label">Tramos</div>
+                            <div class="modal-stat-value">${data.numeroTramos}</div>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-cog"></i></div>
-                        <div class="modal-stat-label">Método</div>
-                        <div class="modal-stat-value">${data.metodo || 'Recursivo'}</div>
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-steps"></i> Proceso Paso a Paso
+                        </div>
+                        ${stepsHtml}
                     </div>
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                        <div class="modal-stat-label">Complejidad</div>
-                        <div class="modal-stat-value">${data.complejidad || 'O(n)'}</div>
-                    </div>
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
-                        <div class="modal-stat-label">Tiempo</div>
-                        <div class="modal-stat-value">${formatExecutionTime(data.tiempoEjecucionNanosegundos)}</div>
-                    </div>
-                    ${data.numeroTramos ? `
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
-                        <div class="modal-stat-label">Tramos</div>
-                        <div class="modal-stat-value">${data.numeroTramos}</div>
-                    </div>
-                    ` : ''}
                 </div>
-            </div>
-            
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
-                <div class="modal-steps-section">
-                    <div class="modal-steps-title">
-                        <i class="fas fa-steps"></i> Proceso Paso a Paso
-                    </div>
-                    ${stepsHtml}
-                </div>
-            </div>
-            
-            <!-- Explicación a lo largo completo -->
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
-                </div>
-                <div class="modal-explanation-text">
-                    <p><strong>Estrategia:</strong> Algoritmo <strong>Recursivo</strong> - divide el problema en subproblemas más pequeños.</p>
-                    
-                    <p><strong>Con tus datos:</strong></p>
-                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                        <li>📥 Recibiste ${tramos} tramos con ${isCost ? 'costos' : 'distancias'}: [${valoresIndividuales.map(v => v.toFixed(2)).join(', ')}]</li>
-                        <li>🔄 La función se llama a sí misma para cada tramo</li>
-                        <li>➕ En cada paso, suma el valor del tramo actual al acumulado</li>
-                        <li>🛑 Caso base: cuando no hay más tramos, retorna 0</li>
-                        <li>✅ Resultado final: <strong>${valor.toFixed(2)} ${unidad}</strong></li>
-                    </ol>
-                    
-                    <p><strong>Ejemplo de las llamadas recursivas con tus valores:</strong></p>
-                    <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> Algoritmo <strong>Recursivo</strong> - divide el problema en subproblemas más pequeños.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📥 Recibiste ${tramos} tramos con ${isCost ? 'costos' : 'distancias'}: [${valoresIndividuales.map(v => v.toFixed(2)).join(', ')}]</li>
+                                <li>🔄 La función se llama a sí misma para cada tramo</li>
+                                <li>➕ En cada paso, suma el valor del tramo actual al acumulado</li>
+                                <li>🛑 Caso base: cuando no hay más tramos, retorna 0</li>
+                                <li>✅ Resultado final: <strong>${valor.toFixed(2)} ${unidad}</strong></li>
+                            </ol>
+                            
+                            <p><strong>Ejemplo de las llamadas recursivas con tus valores:</strong></p>
+                            <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">
 calcular${isCost ? 'Costo' : 'Distancia'}([${valoresIndividuales.map(v => v.toFixed(2)).join(', ')}])
   = ${valoresIndividuales[0].toFixed(2)} + calcular${isCost ? 'Costo' : 'Distancia'}([${valoresIndividuales.slice(1).map(v => v.toFixed(2)).join(', ')}])
 ${valoresIndividuales.length > 1 ? `  = ${valoresIndividuales[0].toFixed(2)} + ${valoresIndividuales[1].toFixed(2)} + calcular${isCost ? 'Costo' : 'Distancia'}([${valoresIndividuales.slice(2).map(v => v.toFixed(2)).join(', ')}])` : ''}
   ...
   = ${valoresIndividuales.map(v => v.toFixed(2)).join(' + ')}
   = <strong>${valor.toFixed(2)} ${unidad}</strong></pre>
-                    
-                    <p><strong>Complejidad:</strong> <code>O(n)</code> donde n = ${tramos} tramos. Cada tramo se procesa exactamente una vez.</p>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(n)</code> donde n = ${tramos} tramos. Cada tramo se procesa exactamente una vez.</p>
+                        </div>
+                    </div>
                 </div>
+                
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    <div class="modal-code-section">
+                        <div class="modal-code-title">
+                            <i class="fas fa-code"></i> Implementación del Algoritmo Recursivo
+                        </div>
+                        <div class="modal-code-content">
+                            <p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 1.05rem;">
+                                Este es el código Java que implementa el algoritmo recursivo para calcular el <strong>${tipo.toLowerCase()}</strong>:
+                            </p>
+                            
+                            <!-- Código Principal -->
+                            <div class="code-block-container">
+                                <div class="code-block-header">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fab fa-java" style="color: #f89820; font-size: 1.2rem;"></i>
+                                        <span class="code-block-language">Java</span>
+                                    </div>
+                                    <button class="code-copy-btn" onclick="copyCodeToClipboard(this)" title="Copiar código">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <pre class="code-block java-syntax"><code><span class="code-comment">/**</span>
+<span class="code-comment"> * Calcula recursivamente el ${tipo.toLowerCase()} de transporte</span>
+<span class="code-comment"> * Complejidad: O(n) donde n es el número de tramos</span>
+<span class="code-comment"> * Recurrencia: T(n) = T(n-1) + O(1) = O(n)</span>
+<span class="code-comment"> * </span>
+<span class="code-comment"> * @param ${isCost ? 'costs' : 'distances'} Array de ${isCost ? 'costos' : 'distancias'} por tramo</span>
+<span class="code-comment"> * @param index Índice actual para la recursión</span>
+<span class="code-comment"> * @return ${tipo} total acumulado</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">double</span> <span class="code-function">calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo</span>(<span class="code-keyword">double</span>[] <span class="code-variable">${isCost ? 'costs' : 'distances'}</span>, <span class="code-keyword">int</span> <span class="code-variable">index</span>) {
+    <span class="code-comment">// Caso base: cuando llegamos al final del array</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">index</span> == <span class="code-variable">${isCost ? 'costs' : 'distances'}</span>.<span class="code-property">length</span>) {
+        <span class="code-keyword">return</span> <span class="code-number">0</span>;
+    }
+    
+    <span class="code-comment">// Caso recursivo: suma el ${isCost ? 'costo' : 'distancia'} actual + el resto</span>
+    <span class="code-keyword">return</span> <span class="code-variable">${isCost ? 'costs' : 'distances'}</span>[<span class="code-variable">index</span>] + 
+           <span class="code-function">calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo</span>(<span class="code-variable">${isCost ? 'costs' : 'distances'}</span>, <span class="code-variable">index</span> + <span class="code-number">1</span>);
+}</code></pre>
+                            </div>
+                            
+                            <!-- Explicación del Código -->
+                            <div class="code-explanation">
+                                <div class="code-section-header">
+                                    <i class="fas fa-info-circle"></i>
+                                    <h4>Explicación del Código</h4>
+                                </div>
+                                <div class="code-explanation-grid">
+                                    <div class="explanation-item">
+                                        <div class="explanation-icon base-case">
+                                            <i class="fas fa-flag-checkered"></i>
+                                        </div>
+                                        <div class="explanation-content">
+                                            <strong>Caso Base</strong>
+                                            <p>Si el índice alcanza el tamaño del array, retorna 0. Esto detiene la recursión y permite que las llamadas anteriores comiencen a retornar valores.</p>
+                                        </div>
+                                    </div>
+                                    <div class="explanation-item">
+                                        <div class="explanation-icon recursive-case">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </div>
+                                        <div class="explanation-content">
+                                            <strong>Caso Recursivo</strong>
+                                            <p>Suma el valor actual del array con el resultado de llamar a la función con el siguiente índice. Esto crea una cadena de llamadas recursivas.</p>
+                                        </div>
+                                    </div>
+                                    <div class="explanation-item">
+                                        <div class="explanation-icon parameters">
+                                            <i class="fas fa-list"></i>
+                                        </div>
+                                        <div class="explanation-content">
+                                            <strong>Parámetros</strong>
+                                            <ul>
+                                                <li><code>${isCost ? 'costs' : 'distances'}</code>: Array con los ${isCost ? 'costos' : 'distancias'} de cada tramo</li>
+                                                <li><code>index</code>: Índice actual que indica qué tramo estamos procesando</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ejemplo de Uso Mejorado -->
+                            <div class="code-example">
+                                <div class="code-section-header">
+                                    <i class="fas fa-play-circle"></i>
+                                    <h4>Ejemplo de Uso con tus Datos</h4>
+                                </div>
+                                
+                                <div class="code-example-container">
+                                    <div class="example-step">
+                                        <div class="step-number">1</div>
+                                        <div class="step-content">
+                                            <strong>Crear el array con los valores:</strong>
+                                            <pre class="example-code"><code><span class="code-keyword">double</span>[] <span class="code-variable">${isCost ? 'costs' : 'distances'}</span> = {${valoresIndividuales.map(v => `<span class="code-number">${v.toFixed(2)}</span>`).join(', ')}};</code></pre>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="example-step">
+                                        <div class="step-number">2</div>
+                                        <div class="step-content">
+                                            <strong>Llamar a la función recursiva:</strong>
+                                            <pre class="example-code"><code><span class="code-keyword">double</span> <span class="code-variable">total</span> = <span class="code-function">calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo</span>(<span class="code-variable">${isCost ? 'costs' : 'distances'}</span>, <span class="code-number">0</span>);</code></pre>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="example-step">
+                                        <div class="step-number">3</div>
+                                        <div class="step-content">
+                                            <strong>Mostrar el resultado:</strong>
+                                            <pre class="example-code"><code><span class="code-class">System</span>.<span class="code-property">out</span>.<span class="code-function">println</span>(<span class="code-string">"Total: "</span> + <span class="code-variable">total</span>);</code></pre>
+                                            <div class="result-box">
+                                                <i class="fas fa-check-circle"></i>
+                                                <span>Resultado: <strong>${valor.toFixed(2)} ${unidad}</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Visualización de Llamadas Recursivas -->
+                                <div class="recursion-call-tree">
+                                    <div class="call-tree-header">
+                                        <i class="fas fa-sitemap"></i>
+                                        <strong>Árbol de Llamadas Recursivas:</strong>
+                                    </div>
+                                    <div class="call-tree-content">
+                                        <div class="call-tree-item">
+                                            <code>calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo([${valoresIndividuales.map(v => v.toFixed(2)).join(', ')}], 0)</code>
+                                            <div class="call-tree-arrow">↓</div>
+                                            <div class="call-tree-item nested">
+                                                <code>${valoresIndividuales[0].toFixed(2)} + calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo([${valoresIndividuales.slice(1).map(v => v.toFixed(2)).join(', ')}], 1)</code>
+                                                ${valoresIndividuales.length > 1 ? `
+                                                <div class="call-tree-arrow">↓</div>
+                                                <div class="call-tree-item nested">
+                                                    <code>${valoresIndividuales[0].toFixed(2)} + ${valoresIndividuales[1].toFixed(2)} + calcular${isCost ? 'Costo' : 'Distancia'}TotalRecursivo([${valoresIndividuales.slice(2).map(v => v.toFixed(2)).join(', ')}], 2)</code>
+                                                    ${valoresIndividuales.length > 2 ? `
+                                                    <div class="call-tree-arrow">↓</div>
+                                                    <div class="call-tree-item nested">
+                                                        <code>...</code>
+                                                    </div>
+                                                    ` : ''}
+                                                    <div class="call-tree-arrow">↓</div>
+                                                    <div class="call-tree-item base">
+                                                        <code>${valoresIndividuales.map(v => v.toFixed(2)).join(' + ')} = <strong>${valor.toFixed(2)}</strong></code>
+                                                    </div>
+                                                </div>
+                                                ` : `
+                                                <div class="call-tree-arrow">↓</div>
+                                                <div class="call-tree-item base">
+                                                    <code>${valoresIndividuales[0].toFixed(2)} = <strong>${valor.toFixed(2)}</strong></code>
+                                                </div>
+                                                `}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Rutas (si hay rutas) -->
+                ${rutasListHtml ? `
+                <div class="modal-tab-pane" data-tab-content="rutas">
+                    ${rutasListHtml}
+                </div>
+                ` : ''}
             </div>
         </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -521,76 +822,129 @@ function formatCombinedMetricsModal(data) {
         `;
     }
     
+    // ID único para las pestañas
+    const tabsId = `tabs-combined-${Date.now()}`;
+    
     return `
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
-                <div class="modal-highlight-box">
-                    <div class="modal-highlight-value">${data.costoPorKm.toFixed(2)}</div>
-                    <div class="modal-highlight-label">Costo por Kilómetro</div>
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${data.costoPorKm.toFixed(2)}</div>
+                        <div class="modal-highlight-label">Costo por Kilómetro</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                            <div class="modal-stat-label">Costo Total</div>
+                            <div class="modal-stat-value">${data.costoTotal.toFixed(2)}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
+                            <div class="modal-stat-label">Distancia Total</div>
+                            <div class="modal-stat-value">${data.distanciaTotal.toFixed(2)} km</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="modal-stat-label">Complejidad</div>
+                            <div class="modal-stat-value">${data.complejidad}</div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                        <div class="modal-stat-label">Costo Total</div>
-                        <div class="modal-stat-value">${data.costoTotal.toFixed(2)}</div>
-                    </div>
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
-                        <div class="modal-stat-label">Distancia Total</div>
-                        <div class="modal-stat-value">${data.distanciaTotal.toFixed(2)} km</div>
-                    </div>
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
-                        <div class="modal-stat-label">Complejidad</div>
-                        <div class="modal-stat-value">${data.complejidad}</div>
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-steps"></i> Cálculo Paso a Paso
+                        </div>
+                        ${stepsHtml}
                     </div>
                 </div>
-            </div>
-            
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
-                <div class="modal-steps-section">
-                    <div class="modal-steps-title">
-                        <i class="fas fa-steps"></i> Cálculo Paso a Paso
-                    </div>
-                    ${stepsHtml}
-                </div>
-            </div>
-            
-            <!-- Explicación a lo largo completo -->
-            <div class="modal-explanation">
-                <div class="modal-explanation-title">
-                    <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
-                </div>
-                <div class="modal-explanation-text">
-                    <p><strong>Estrategia:</strong> Combina dos cálculos <strong>recursivos</strong> para obtener métricas de eficiencia.</p>
-                    
-                    <p><strong>Con tus datos:</strong></p>
-                    <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                        <li>💰 Costos por tramo: [${costosIndividuales.map(c => c.toFixed(2)).join(', ')}]</li>
-                        <li>📏 Distancias por tramo: [${distanciasIndividuales.map(d => d.toFixed(2)).join(', ')}] km</li>
-                        <li>🔄 Se calcularon ambas métricas recursivamente en ${tramos} pasos</li>
-                        <li>💰 Costo total: <strong>${data.costoTotal.toFixed(2)} unidades</strong></li>
-                        <li>📏 Distancia total: <strong>${data.distanciaTotal.toFixed(2)} km</strong></li>
-                        <li>➗ Se dividió costo entre distancia</li>
-                        <li>✅ Resultado: <strong>${data.costoPorKm.toFixed(2)} unidades por km</strong></li>
-                    </ol>
-                    
-                    <p><strong>Fórmula aplicada:</strong></p>
-                    <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo se Calcula?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> Combina dos cálculos <strong>recursivos</strong> para obtener métricas de eficiencia.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>💰 Costos por tramo: [${costosIndividuales.map(c => c.toFixed(2)).join(', ')}]</li>
+                                <li>📏 Distancias por tramo: [${distanciasIndividuales.map(d => d.toFixed(2)).join(', ')}] km</li>
+                                <li>🔄 Se calcularon ambas métricas recursivamente en ${tramos} pasos</li>
+                                <li>💰 Costo total: <strong>${data.costoTotal.toFixed(2)} unidades</strong></li>
+                                <li>📏 Distancia total: <strong>${data.distanciaTotal.toFixed(2)} km</strong></li>
+                                <li>➗ Se dividió costo entre distancia</li>
+                                <li>✅ Resultado: <strong>${data.costoPorKm.toFixed(2)} unidades por km</strong></li>
+                            </ol>
+                            
+                            <p><strong>Fórmula aplicada:</strong></p>
+                            <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
 Costo Total = ${costosIndividuales.map(c => c.toFixed(2)).join(' + ')} = ${data.costoTotal.toFixed(2)}
 Distancia Total = ${distanciasIndividuales.map(d => d.toFixed(2)).join(' + ')} = ${data.distanciaTotal.toFixed(2)} km
 
 Costo por Km = ${data.costoTotal.toFixed(2)} ÷ ${data.distanciaTotal.toFixed(2)} = <strong>${data.costoPorKm.toFixed(2)} unidades/km</strong></pre>
-                    
-                    <p><strong>¿Qué significa?</strong> Por cada kilómetro recorrido, gastas aproximadamente ${data.costoPorKm.toFixed(2)} unidades. ${data.costoPorKm < 10 ? '¡Ruta muy eficiente! 🎉' : data.costoPorKm < 20 ? 'Eficiencia moderada ✓' : 'Considera optimizar la ruta 💡'}</p>
-                    
-                    <p><strong>Complejidad:</strong> <code>O(n)</code> para calcular ambas métricas, donde n = ${tramos} tramos.</p>
+                            
+                            <p><strong>¿Qué significa?</strong> Por cada kilómetro recorrido, gastas aproximadamente ${data.costoPorKm.toFixed(2)} unidades. ${data.costoPorKm < 10 ? '¡Ruta muy eficiente! 🎉' : data.costoPorKm < 20 ? 'Eficiencia moderada ✓' : 'Considera optimizar la ruta 💡'}</p>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(n)</code> para calcular ambas métricas, donde n = ${tramos} tramos.</p>
+                        </div>
+                    </div>
                 </div>
+                
+                ${generateCodeTab('recursive-combined', data)}
             </div>
         </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -665,6 +1019,11 @@ function formatCompareResultModal(data) {
                     '¡El iterativo ganó! Es la mejor opción para este problema en términos de tiempo y memoria.' : 
                     'Sorpresa: ¡El recursivo fue más rápido! Esto puede pasar en datasets pequeños o con optimizaciones del compilador.'}</p>
             </div>
+        </div>
+        
+        <!-- Pestaña: Código -->
+        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--border-color);">
+            ${generateCodeTab('recursive-combined', data)}
         </div>
     `;
 }
@@ -1128,10 +1487,30 @@ function formatSortResultModal(data) {
         `;
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-sort-${Date.now()}`;
+    
     return `
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">${centros.length}</div>
                     <div class="modal-highlight-label">Centros Ordenados</div>
@@ -1156,7 +1535,7 @@ function formatSortResultModal(data) {
                 </div>
                 `}
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-sort"></i></div>
                         <div class="modal-stat-label">Algoritmo</div>
@@ -1175,8 +1554,8 @@ function formatSortResultModal(data) {
                 </div>
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Ordenamiento Paso a Paso
@@ -1185,7 +1564,8 @@ function formatSortResultModal(data) {
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
@@ -1206,6 +1586,38 @@ function formatSortResultModal(data) {
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab(data.algoritmo === 'MergeSort' ? 'mergesort' : 'quicksort', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1237,16 +1649,38 @@ function formatBinarySearchResultModal(data) {
         });
     }
     
+    // ID único para las pestañas
+    const tabsId = `tabs-binary-${Date.now()}`;
+    
     return `
-        <div class="modal-result-section">
-            <!-- Columna Izquierda -->
-            <div class="modal-left-column">
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                ${centrosOrdenados.length > 0 ? `
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-list"></i> Centros
+                </button>
+                ` : ''}
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
             ${encontrado ? `
                 <div class="modal-highlight-box" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                     <div class="modal-highlight-value"><i class="fas fa-check-circle"></i></div>
                     <div class="modal-highlight-label">¡Centro Encontrado!</div>
                 </div>
-                <div class="modal-stat-card" style="border-color: #10b981;">
+                    <div class="modal-stat-card" style="border-color: #10b981; margin-top: 2rem;">
                     <div class="modal-stat-icon"><i class="fas fa-building"></i></div>
                     <div class="modal-stat-label">Centro</div>
                     <div class="modal-stat-value">${data.centro.name || data.centro.id}</div>
@@ -1259,7 +1693,7 @@ function formatBinarySearchResultModal(data) {
                     <div class="modal-highlight-value"><i class="fas fa-times-circle"></i></div>
                     <div class="modal-highlight-label">Centro No Encontrado</div>
                 </div>
-                    <div class="modal-info-box" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger-color); padding: 1rem; margin: 1rem 0; border-radius: 8px;">
+                    <div class="modal-info-box" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger-color); padding: 1rem; margin: 2rem 0; border-radius: 8px;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-info-circle" style="color: var(--danger-color);"></i>
                             <strong>No se encontró ningún centro con demanda = ${data.demandaBuscada}</strong>
@@ -1286,7 +1720,7 @@ function formatBinarySearchResultModal(data) {
                 </div>
                 `}
                 
-            <div class="modal-stats-grid">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-search"></i></div>
                         <div class="modal-stat-label">Demanda Buscada</div>
@@ -1305,9 +1739,9 @@ function formatBinarySearchResultModal(data) {
             </div>
             </div>
             
-            <!-- Columna Derecha: Lista de Centros Ordenados -->
+                <!-- Pestaña: Proceso (Centros) -->
             ${centrosOrdenados.length > 0 ? `
-            <div class="modal-right-column">
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-list"></i> Centros Ordenados por Demanda
@@ -1316,9 +1750,9 @@ function formatBinarySearchResultModal(data) {
                 </div>
             </div>
             ` : ''}
-        </div>
         
-        <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
         <div class="modal-explanation">
             <div class="modal-explanation-title">
                 <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
@@ -1342,6 +1776,39 @@ function formatBinarySearchResultModal(data) {
                 <p><strong>Complejidad:</strong> <code>O(log n)</code> - En lugar de revisar ${centrosOrdenados.length} centros uno por uno (O(n)), solo necesitamos revisar log₂(${centrosOrdenados.length}) ≈ ${Math.ceil(Math.log2(centrosOrdenados.length || 1))} pasos. ¡Mucho más rápido!</p>
             </div>
         </div>
+                </div>
+                
+                ${generateCodeTab('binary-search', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1383,21 +1850,41 @@ function formatFuelDistributionModal(data) {
         }
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-fuel-${Date.now()}`;
+    
     return `
         <!-- Visualización Paso a Paso (Full Width, Arriba) -->
         <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
             <div class="greedy-visualization" style="min-height: 300px;"></div>
         </div>
         
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">${data.totalDistribuido}L</div>
                     <div class="modal-highlight-label">Litros Distribuidos</div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-box"></i></div>
                         <div class="modal-stat-label">Bidones Usados</div>
@@ -1418,8 +1905,8 @@ function formatFuelDistributionModal(data) {
                 </div>
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Distribución Paso a Paso
@@ -1428,18 +1915,51 @@ function formatFuelDistributionModal(data) {
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
                 </div>
                 <div class="modal-explanation-text">
-                    El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante. 
-                    Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados. 
-                    La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.
+                            <p>El algoritmo <strong>Greedy</strong> (voraz) siempre elige el bidón más grande que no exceda la cantidad restante.</p>
+                            <p>Esta estrategia localmente óptima funciona perfectamente para este problema porque los tamaños están bien diseñados.</p>
+                            <p>La complejidad es <strong>O(n)</strong> donde n es el número de tamaños disponibles.</p>
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab('greedy-fuel', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1466,8 +1986,10 @@ function formatBudgetDistributionModal(data) {
         `;
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-budget-${Date.now()}`;
+    
     return `
-        <div class="modal-result-section">
             <!-- Visualización de Proyectos -->
             <div class="modal-visualization-container" 
                  data-viz-type="budget-projects"
@@ -1478,14 +2000,32 @@ function formatBudgetDistributionModal(data) {
                  })}'>
             </div>
             
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">$${data.presupuestoAsignado.toFixed(2)}</div>
                     <div class="modal-highlight-label">Presupuesto Asignado</div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-wallet"></i></div>
                         <div class="modal-stat-label">Presupuesto Restante</div>
@@ -1496,11 +2036,16 @@ function formatBudgetDistributionModal(data) {
                         <div class="modal-stat-label">Proyectos</div>
                         <div class="modal-stat-value">${distribucion.length}</div>
                     </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="modal-stat-label">Complejidad</div>
+                            <div class="modal-stat-value">${data.complejidad || 'O(n log n)'}</div>
+                    </div>
                 </div>
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Asignación Paso a Paso
@@ -1509,18 +2054,52 @@ function formatBudgetDistributionModal(data) {
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
                 </div>
                 <div class="modal-explanation-text">
-                    Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
-                    y asignando presupuesto empezando por los más eficientes. Permite asignar fracciones de proyectos cuando el presupuesto 
-                    no alcanza para completarlos.
+                            <p>Este algoritmo utiliza <strong>Mochila Fraccional Greedy</strong>, ordenando proyectos por ratio beneficio/costo 
+                            y asignando presupuesto empezando por los más eficientes.</p>
+                            <p>Permite asignar fracciones de proyectos cuando el presupuesto no alcanza para completarlos.</p>
+                            <p>La complejidad es <strong>O(n log n)</strong> debido al ordenamiento inicial, donde n es el número de proyectos.</p>
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab('greedy-budget', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1556,26 +2135,39 @@ function formatMSTResultModal(data, algoritmo) {
         `;
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-mst-${Date.now()}`;
+    
     return `
-        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
-        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
-            <div class="graph-visualization" style="width: 100%; min-height: 900px; max-height: 900px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 8px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
-                <div style="margin-bottom: 15px; color: #94a3b8; font-size: 13px; text-align: center; flex-shrink: 0;">
-                    <i class="fas fa-hand-pointer"></i> Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo
-                </div>
-                <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
-            </div>
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="grafico">
+                    <i class="fas fa-project-diagram"></i> Gráfico
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
         </div>
         
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">$${data.costoTotal.toFixed(2)}</div>
                     <div class="modal-highlight-label">Costo Total MST</div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-link"></i></div>
                         <div class="modal-stat-label">Aristas</div>
@@ -1587,10 +2179,33 @@ function formatMSTResultModal(data, algoritmo) {
                         <div class="modal-stat-value">${data.complejidad}</div>
                     </div>
                 </div>
+                    
+                    ${data.fuente === 'neo4j-selected' ? 
+                    `<div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <i class="fas fa-database" style="color: #3b82f6;"></i>
+                            <strong>Datos utilizados:</strong>
+                        </div>
+                        ${data.centrosSeleccionados ? `<div style="font-size: 0.9rem; color: var(--text-secondary);">Centros: ${data.centrosSeleccionados}</div>` : ''}
+                        ${data.rutasSeleccionadas ? `<div style="font-size: 0.9rem; color: var(--text-secondary);">Rutas: ${data.rutasSeleccionadas}</div>` : ''}
+                    </div>` :
+                    data.fuente === 'neo4j' ? 
+                    `<div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-database" style="color: #3b82f6;"></i>
+                            <strong>Datos utilizados:</strong> Base de datos Neo4j (centros y rutas almacenados)
+                        </div>
+                    </div>` : 
+                    `<div style="background: rgba(34, 197, 94, 0.1); padding: 1rem; border-left: 4px solid #22c55e; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-keyboard" style="color: #22c55e;"></i>
+                            <strong>Datos utilizados:</strong> Datos ingresados manualmente
+                        </div>
+                    </div>`}
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Construcción Paso a Paso
@@ -1599,21 +2214,27 @@ function formatMSTResultModal(data, algoritmo) {
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Gráfico -->
+                <div class="modal-tab-pane" data-tab-content="grafico">
+                    <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+                        <div class="graph-visualization" style="width: 100%; min-height: 600px; max-height: 800px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
+                            <div style="margin-bottom: 15px; color: #94a3b8; font-size: 14px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <i class="fas fa-hand-pointer"></i>
+                                <span>Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo</span>
+                            </div>
+                            <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona con tus Datos Reales?
                 </div>
                 <div class="modal-explanation-text">
                     <p><strong>Problema que resuelve:</strong> Imagina que tienes varias ciudades (o centros de distribución) y varias rutas posibles entre ellas, cada una con un costo diferente. Quieres conectar todas las ciudades gastando lo menos posible, sin crear rutas innecesarias.</p>
-                    
-                    ${data.fuente === 'neo4j-selected' ? 
-                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando centros y rutas seleccionados de tu base de datos Neo4j.<br>' + 
-                    (data.centrosSeleccionados ? `<strong>Centros seleccionados:</strong> ${data.centrosSeleccionados}<br>` : '') +
-                    (data.rutasSeleccionadas ? `<strong>Rutas seleccionadas:</strong> ${data.rutasSeleccionadas}</p>` : '</p>') :
-                    data.fuente === 'neo4j' ? 
-                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando datos reales de tu base de datos Neo4j (centros de distribución y rutas almacenados).</p>' : 
-                    '<p style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-left: 3px solid #22c55e; margin-bottom: 1rem;"><i class="fas fa-keyboard"></i> <strong>Datos utilizados:</strong> Se están usando los datos que ingresaste manualmente.</p>'}
                     
                     <p><strong>Con tus datos:</strong></p>
                     <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
@@ -1647,6 +2268,56 @@ function formatMSTResultModal(data, algoritmo) {
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab('kruskal', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                                
+                                // Si se activa la pestaña de gráfico, inicializar la visualización
+                                if (targetTab === 'grafico') {
+                                    setTimeout(() => {
+                                        const vizContainer = document.getElementById('${vizId}');
+                                        if (vizContainer) {
+                                            const vizData = JSON.parse(vizContainer.getAttribute('data-viz-data'));
+                                            const svg = vizContainer.querySelector('.graph-svg');
+                                            if (svg && vizData.edges && vizData.edges.length > 0) {
+                                                if (typeof visualizer !== 'undefined' && visualizer.drawGraph) {
+                                                    visualizer.drawGraph(vizData.edges, svg, vizData.indexToCenter);
+                                                } else {
+                                                    iniciarVisualizacionGrafo(vizContainer, vizData);
+                                                }
+                                            }
+                                        }
+                                    }, 100);
+                                }
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1749,26 +2420,39 @@ function formatDijkstraResultModal(data) {
         `;
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-dijkstra-${Date.now()}`;
+    
     return `
-        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
-        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
-            <div class="graph-visualization" style="width: 100%; min-height: 900px; max-height: 900px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 8px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box;">
-                <div style="margin-bottom: 15px; color: #94a3b8; font-size: 13px; text-align: center; flex-shrink: 0;">
-                    <i class="fas fa-hand-pointer"></i> Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo
-                </div>
-                <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
-            </div>
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="grafico">
+                    <i class="fas fa-project-diagram"></i> Gráfico
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
         </div>
         
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">${sourceCenterName}</div>
                     <div class="modal-highlight-label">Centro de Origen</div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-map-marked-alt"></i></div>
                         <div class="modal-stat-label">Centros Alcanzados</div>
@@ -1781,9 +2465,9 @@ function formatDijkstraResultModal(data) {
                     </div>
                 </div>
                 
-                <div class="modal-list" style="margin-top: 0;">
+                    <div class="modal-list" style="margin-top: 2rem;">
                     <div class="modal-list-title">Distancias Mínimas:</div>
-                    ${entries.slice(0, 5).map(([vertice, distancia]) => {
+                        ${entries.slice(0, 10).map(([vertice, distancia]) => {
                         const verticeNum = parseInt(vertice);
                         const centerInfo = indexToCenterName[verticeNum] || indexToCenterName[vertice] || null;
                         const centerName = centerInfo?.name || `Centro ${vertice}`;
@@ -1796,12 +2480,26 @@ function formatDijkstraResultModal(data) {
                         </div>
                     `;
                     }).join('')}
-                    ${entries.length > 5 ? `<div style="color: var(--text-secondary); margin-top: 1rem;">... y ${entries.length - 5} más</div>` : ''}
+                        ${entries.length > 10 ? `<div style="color: var(--text-secondary); margin-top: 1rem; text-align: center;">... y ${entries.length - 10} más</div>` : ''}
                 </div>
+                    
+                    ${data.fuente === 'neo4j-selected' || data.fuente === 'neo4j' ? 
+                    `<div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-database" style="color: #3b82f6;"></i>
+                            <strong>Datos utilizados:</strong> Base de datos Neo4j (centros y rutas seleccionados)
+                        </div>
+                    </div>` : 
+                    `<div style="background: rgba(34, 197, 94, 0.1); padding: 1rem; border-left: 4px solid #22c55e; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-keyboard" style="color: #22c55e;"></i>
+                            <strong>Datos utilizados:</strong> Datos ingresados manualmente
+                        </div>
+                    </div>`}
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Exploración Paso a Paso
@@ -1810,17 +2508,27 @@ function formatDijkstraResultModal(data) {
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                <!-- Pestaña: Gráfico -->
+                <div class="modal-tab-pane" data-tab-content="grafico">
+                    <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+                        <div class="graph-visualization" style="width: 100%; min-height: 600px; max-height: 800px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 40px; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
+                            <div style="margin-bottom: 15px; color: #94a3b8; font-size: 14px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <i class="fas fa-hand-pointer"></i>
+                                <span>Arrastra los nodos para moverlos | Arrastra el fondo para navegar el grafo</span>
+                            </div>
+                            <svg width="100%" height="100%" class="graph-svg" style="background: transparent; overflow: hidden; flex: 1; min-height: 0; max-height: 100%; box-sizing: border-box;"></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona con tus Datos Reales?
                 </div>
                 <div class="modal-explanation-text">
                     <p><strong>Problema que resuelve:</strong> Imagina que estás en ${sourceCenterName} y quieres saber cuál es la distancia más corta para llegar a cada uno de los otros centros. Es como usar Google Maps: le dices "quiero ir desde aquí" y te muestra el camino más rápido a cada destino.</p>
-                    
-                    ${data.fuente === 'neo4j-selected' || data.fuente === 'neo4j' ? 
-                    '<p style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-left: 3px solid #3b82f6; margin-bottom: 1rem;"><i class="fas fa-database"></i> <strong>Datos utilizados:</strong> Se están usando datos reales de tu base de datos Neo4j (centros de distribución y rutas seleccionados).</p>' : 
-                    '<p style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-left: 3px solid #22c55e; margin-bottom: 1rem;"><i class="fas fa-keyboard"></i> <strong>Datos utilizados:</strong> Se están usando los datos que ingresaste manualmente.</p>'}
                     
                     <p><strong>Con tus datos:</strong></p>
                     <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
@@ -1853,6 +2561,56 @@ function formatDijkstraResultModal(data) {
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab('dijkstra', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                                
+                                // Si se activa la pestaña de gráfico, inicializar la visualización
+                                if (targetTab === 'grafico') {
+                                    setTimeout(() => {
+                                        const vizContainer = document.getElementById('${vizId}');
+                                        if (vizContainer) {
+                                            const vizData = JSON.parse(vizContainer.getAttribute('data-viz-data'));
+                                            const svg = vizContainer.querySelector('.graph-svg');
+                                            if (svg && vizData.edges && vizData.edges.length > 0) {
+                                                if (typeof visualizer !== 'undefined' && visualizer.drawGraph) {
+                                                    visualizer.drawGraph(vizData.edges, svg, vizData.indexToCenter);
+                                                } else {
+                                                    iniciarVisualizacionGrafo(vizContainer, vizData);
+                                                }
+                                            }
+                                        }
+                                    }, 100);
+                                }
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1893,25 +2651,41 @@ function formatKnapsackResultModal(data) {
         `;
     });
     
+    // ID único para las pestañas
+    const tabsId = `tabs-knapsack-${Date.now()}`;
+    
     return `
-        <!-- Visualización Paso a Paso (Full Width, Arriba) -->
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
         ${tablaDP ? `
-        <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
-            <div class="dp-visualization" style="min-height: 400px;">
-                <div class="dp-table-container"></div>
-            </div>
-        </div>
+                <button class="modal-tab-btn" data-tab="tabla-dp">
+                    <i class="fas fa-table"></i> Tabla DP
+                </button>
         ` : ''}
-        
-        <div class="modal-result-section">
-            <!-- Columna Izquierda: Resultado Principal -->
-            <div class="modal-left-column">
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
                 <div class="modal-highlight-box">
                     <div class="modal-highlight-value">$${data.beneficioTotal}</div>
                     <div class="modal-highlight-label">Beneficio Total Máximo</div>
                 </div>
                 
-                <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
                         <div class="modal-stat-label">Costo Total</div>
@@ -1930,34 +2704,141 @@ function formatKnapsackResultModal(data) {
                     <div class="modal-stat-card">
                         <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
                         <div class="modal-stat-label">Complejidad</div>
-                        <div class="modal-stat-value">${data.complejidad}</div>
+                            <div class="modal-stat-value">${data.complejidad || 'O(n × P)'}</div>
                     </div>
                 </div>
+                    
+                    ${proyectos.length > 0 ? `
+                    <div style="margin-top: 2rem;">
+                        <div class="modal-list-title">Proyectos Seleccionados:</div>
+                        <div class="modal-list">
+                            ${proyectos.map((proyecto, index) => `
+                                <div class="modal-list-item">
+                                    <div class="modal-list-item-number">${index + 1}</div>
+                                    <div class="modal-list-item-content">${proyecto}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
             </div>
             
-            <!-- Columna Derecha: Paso a Paso -->
-            <div class="modal-right-column">
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
                 <div class="modal-steps-section">
                     <div class="modal-steps-title">
                         <i class="fas fa-steps"></i> Selección Paso a Paso
                     </div>
-                    ${stepsHtml || '<div style="color: var(--text-secondary); text-align: center; padding: 2rem;">Los proyectos seleccionados se muestran en la lista de la izquierda</div>'}
+                        ${stepsHtml || '<div style="color: var(--text-secondary); text-align: center; padding: 2rem;">Los proyectos seleccionados se muestran en la lista del resumen</div>'}
                 </div>
             </div>
             
-            <!-- Explicación a lo largo completo -->
+                ${tablaDP ? `
+                <!-- Pestaña: Tabla DP -->
+                <div class="modal-tab-pane" data-tab-content="tabla-dp">
+                    <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
+                        <div class="dp-visualization" style="min-height: 500px; max-height: 800px; overflow-y: auto;">
+                            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
+                                <i class="fas fa-info-circle"></i> Tabla de Programación Dinámica: cada celda dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w
+                            </div>
+                            <div class="dp-table-container"></div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
             <div class="modal-explanation">
                 <div class="modal-explanation-title">
                     <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
                 </div>
                 <div class="modal-explanation-text">
-                    La <strong>Programación Dinámica</strong> resuelve el problema de la mochila 0/1 construyendo una tabla donde 
-                    dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w. La solución óptima se 
-                    encuentra al considerar todas las combinaciones posibles. Complejidad <strong>O(n × P)</strong> garantiza encontrar la 
-                    solución globalmente óptima.
+                            <p><strong>Problema que resuelve:</strong> Tienes un presupuesto limitado y varios proyectos con diferentes costos y beneficios. Quieres seleccionar los proyectos que maximicen tu beneficio total sin exceder el presupuesto.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📊 <strong>Proyectos seleccionados:</strong> El algoritmo encontró ${proyectos.length} proyectos que maximizan el beneficio:
+                                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                        ${proyectos.map((p, i) => `<li>${i + 1}. ${p}</li>`).join('')}
+                                    </ul>
+                                </li>
+                                <li>🔄 <strong>Proceso del algoritmo:</strong>
+                                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                        <li>1️⃣ Construye una tabla dp[i][w] donde i = número de proyectos y w = presupuesto</li>
+                                        <li>2️⃣ Para cada proyecto, decide si incluirlo o no basándose en qué opción da más beneficio</li>
+                                        <li>3️⃣ Si el costo del proyecto es menor o igual al presupuesto disponible, compara:
+                                            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                                <li>Incluir el proyecto: beneficio del proyecto + mejor solución con el presupuesto restante</li>
+                                                <li>No incluirlo: mejor solución sin este proyecto</li>
+                                            </ul>
+                                        </li>
+                                        <li>4️⃣ Elige la opción que maximiza el beneficio</li>
+                                        <li>5️⃣ La solución óptima está en dp[n][presupuesto]</li>
+                                    </ul>
+                                </li>
+                                <li>✅ <strong>Resultado final:</strong> Beneficio total de <strong>$${data.beneficioTotal}</strong> con un costo de <strong>$${data.costoTotal}</strong> y un presupuesto restante de <strong>$${data.presupuestoRestante}</strong></li>
+                                <li>💰 <strong>Ventaja:</strong> A diferencia de Greedy, este algoritmo garantiza encontrar la solución óptima global, no solo una solución localmente buena.</li>
+                            </ol>
+                            
+                            <p><strong>Ejemplo práctico:</strong> Es como planificar qué proyectos de inversión elegir cuando tienes un presupuesto limitado. DP te garantiza que estás obteniendo el máximo beneficio posible con tu dinero.</p>
+                            
+                            <p><strong>Complejidad:</strong> O(n × P) donde n es el número de proyectos y P es el presupuesto. Esto garantiza encontrar la solución óptima en tiempo razonable.</p>
                 </div>
             </div>
         </div>
+                
+                ${generateCodeTab('knapsack-dp', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                                
+                                // Si se activa la pestaña de tabla DP, inicializar la visualización
+                                if (targetTab === 'tabla-dp') {
+                                    setTimeout(() => {
+                                        try {
+                                            const vizContainer = document.getElementById('${vizId}');
+                                            if (vizContainer) {
+                                                const vizDataAttr = vizContainer.getAttribute('data-viz-data');
+                                                if (vizDataAttr) {
+                                                    const vizData = JSON.parse(vizDataAttr);
+                                                    if (typeof iniciarVisualizacionDP === 'function') {
+                                                        iniciarVisualizacionDP(vizContainer, vizData);
+                                                    }
+                                                }
+                                            }
+                                        } catch (err) {
+                                            console.error('Error al inicializar tabla DP:', err);
+                                        }
+                                    }, 200);
+                                }
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -1977,7 +2858,10 @@ function formatKnapsackComparisonModal(data) {
     const proyectosDP = dp.proyectosSeleccionados || [];
     const proyectosGreedy = greedy.proyectosSeleccionados || [];
     
+    // Verificar si hay tabla DP disponible
+    const tablaDP = dp.tablaDP || data.tablaDP || null;
     const vizId = `comparison-viz-${Date.now()}`;
+    const dpVizId = `dp-comparison-viz-${Date.now()}`;
     const vizData = JSON.stringify({ 
         beneficioDP, 
         beneficioGreedy, 
@@ -1987,9 +2871,41 @@ function formatKnapsackComparisonModal(data) {
         proyectosGreedy,
         diferencia
     });
+    const dpVizData = tablaDP ? JSON.stringify({ 
+        tabla: tablaDP, 
+        presupuesto: dp.presupuestoInicial || data.presupuestoInicial || 0,
+        proyectos: proyectosDP.length 
+    }) : null;
+    
+    // ID único para las pestañas
+    const tabsId = `tabs-comparison-${Date.now()}`;
     
     return `
-        <div class="modal-result-section">
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="comparacion">
+                    <i class="fas fa-balance-scale"></i> Comparación
+                </button>
+                ${tablaDP ? `
+                <button class="modal-tab-btn" data-tab="tabla-dp">
+                    <i class="fas fa-table"></i> Tabla DP
+                </button>
+                ` : ''}
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
             <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
                 <div class="modal-stat-card" style="border-color: var(--primary-color); background: rgba(37, 99, 235, 0.15);">
                     <div class="modal-stat-icon"><i class="fas fa-chart-line"></i></div>
@@ -2020,7 +2936,8 @@ function formatKnapsackComparisonModal(data) {
             </div>
         </div>
         
-        <!-- Visualización Comparativa (Full Width, Arriba de la Explicación) -->
+                <!-- Pestaña: Comparación -->
+                <div class="modal-tab-pane" data-tab-content="comparacion">
         <div class="modal-visualization-container" id="${vizId}" data-viz-data='${vizData}'>
             <div class="comparison-visualization">
                 <!-- Gráfico de barras comparativo -->
@@ -2075,23 +2992,105 @@ function formatKnapsackComparisonModal(data) {
                                     <i class="fas fa-check-circle"></i> ${p}
                                 </div>
                             `).join('') : '<div class="no-projects">Ninguno</div>'}
+                                    </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Explicación a lo largo completo -->
+                ${tablaDP ? `
+                <!-- Pestaña: Tabla DP -->
+                <div class="modal-tab-pane" data-tab-content="tabla-dp">
+                    <div class="modal-visualization-container" id="${dpVizId}" data-viz-data='${dpVizData}'>
+                        <div class="dp-visualization" style="min-height: 500px; max-height: 800px; overflow-y: auto;">
+                            <div style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
+                                <i class="fas fa-info-circle"></i> Tabla de Programación Dinámica: cada celda dp[i][w] representa el máximo beneficio usando los primeros i proyectos con presupuesto w
+                            </div>
+                            <div class="dp-table-container"></div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
         <div class="modal-explanation">
             <div class="modal-explanation-title">
                 <i class="fas fa-lightbulb"></i> ¿Por Qué?
             </div>
             <div class="modal-explanation-text">
-                <strong>Programación Dinámica</strong> siempre encuentra la solución óptima garantizada porque explora todas las 
-                combinaciones posibles. <strong>Greedy</strong> es más rápido pero puede fallar al elegir localmente lo mejor sin considerar 
-                el impacto global. Esta comparación muestra por qué DP es preferible para problemas donde se requiere la solución óptima.
+                            <p><strong>Programación Dinámica</strong> siempre encuentra la solución óptima garantizada porque explora todas las combinaciones posibles. <strong>Greedy</strong> es más rápido pero puede fallar al elegir localmente lo mejor sin considerar el impacto global.</p>
+                            
+                            <p><strong>Comparación de resultados:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📊 <strong>DP obtuvo:</strong> $${beneficioDP} de beneficio con ${proyectosDP.length} proyectos</li>
+                                <li>🔥 <strong>Greedy obtuvo:</strong> $${beneficioGreedy} de beneficio con ${proyectosGreedy.length} proyectos</li>
+                                <li>${diferencia > 0 ? `✅ <strong>DP es mejor</strong> por $${Math.abs(diferencia)}` : diferencia < 0 ? `⚠️ <strong>Greedy es mejor</strong> por $${Math.abs(diferencia)}` : `🤝 <strong>Empate</strong> - ambos obtuvieron el mismo beneficio`}</li>
+                            </ul>
+                            
+                            <p><strong>¿Cuándo usar cada uno?</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>💡 <strong>Usa DP cuando:</strong> Necesitas la solución óptima garantizada y el problema es lo suficientemente pequeño para que el tiempo de ejecución sea aceptable.</li>
+                                <li>⚡ <strong>Usa Greedy cuando:</strong> Necesitas una solución rápida y una aproximación es suficiente, o cuando el problema es demasiado grande para DP.</li>
+                            </ul>
+                            
+                            <p><strong>Esta comparación muestra por qué DP es preferible para problemas donde se requiere la solución óptima.</strong></p>
             </div>
         </div>
+                </div>
+                
+                ${generateCodeTab('knapsack-dp', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                                
+                                // Si se activa la pestaña de tabla DP, inicializar la visualización
+                                if (targetTab === 'tabla-dp') {
+                                    setTimeout(() => {
+                                        try {
+                                            const vizContainer = document.getElementById('${dpVizId}');
+                                            if (vizContainer) {
+                                                const vizDataAttr = vizContainer.getAttribute('data-viz-data');
+                                                if (vizDataAttr) {
+                                                    const vizData = JSON.parse(vizDataAttr);
+                                                    if (typeof iniciarVisualizacionDP === 'function') {
+                                                        iniciarVisualizacionDP(vizContainer, vizData);
+                                                    }
+                                                }
+                                            }
+                                        } catch (err) {
+                                            console.error('Error al inicializar tabla DP:', err);
+                                        }
+                                    }, 200);
+                                }
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
     `;
 }
 
@@ -2209,7 +3208,13 @@ async function cargarRutasRecursividad() {
     
     try {
         const response = await fetch(`${API_BASE}/neo4j/data`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error(`Endpoint no encontrado. Verifica que Spring Boot esté corriendo en ${API_BASE}/neo4j/data`);
+            }
+            const errorText = await response.text();
+            throw new Error(`Error HTTP ${response.status}: ${errorText || 'Error desconocido'}`);
+        }
         
         const data = await response.json();
         const rutas = Array.isArray(data.rutas) ? data.rutas : [];
@@ -2238,16 +3243,65 @@ async function cargarRutasRecursividad() {
             container.innerHTML = '';
             rutas.forEach(ruta => {
                 const item = document.createElement('div');
-                item.className = 'selectable-item';
+                item.className = 'selectable-item route-card';
                 item.dataset.id = ruta.id || '';
                 item.dataset.cost = ruta.cost || 0;
                 item.dataset.distance = ruta.distance || 0;
-                item.textContent = `${ruta.name || ruta.id} - Costo: $${ruta.cost} - Distancia: ${ruta.distance}km`;
-                item.onclick = () => item.classList.toggle('selected');
+                
+                // Crear estructura moderna de tarjeta
+                item.innerHTML = `
+                    <div class="route-card-content">
+                        <div class="route-card-header">
+                            <div class="route-icon">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <div class="route-name-section">
+                                <h4 class="route-name">${ruta.name || ruta.id}</h4>
+                                <span class="route-id">${ruta.id}</span>
+                            </div>
+                            <div class="route-checkbox">
+                                <i class="far fa-circle"></i>
+                            </div>
+                        </div>
+                        <div class="route-card-body">
+                            <div class="route-stat">
+                                <div class="route-stat-icon cost-icon">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                                <div class="route-stat-info">
+                                    <span class="route-stat-label">Costo</span>
+                                    <span class="route-stat-value">$${ruta.cost?.toLocaleString() || 0}</span>
+                                </div>
+                            </div>
+                            <div class="route-stat">
+                                <div class="route-stat-icon distance-icon">
+                                    <i class="fas fa-road"></i>
+                                </div>
+                                <div class="route-stat-info">
+                                    <span class="route-stat-label">Distancia</span>
+                                    <span class="route-stat-value">${ruta.distance?.toLocaleString() || 0} km</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                item.onclick = () => {
+                    item.classList.toggle('selected');
+                    const checkbox = item.querySelector('.route-checkbox i');
+                    if (item.classList.contains('selected')) {
+                        checkbox.classList.remove('far', 'fa-circle');
+                        checkbox.classList.add('fas', 'fa-check-circle');
+                    } else {
+                        checkbox.classList.remove('fas', 'fa-check-circle');
+                        checkbox.classList.add('far', 'fa-circle');
+                    }
+                };
+                
                 container.appendChild(item);
             });
             
-            container.style.display = 'flex';
+            container.style.display = 'grid';
         });
         
         // Ocultar loading
@@ -2257,16 +3311,41 @@ async function cargarRutasRecursividad() {
         });
         
     } catch (error) {
+        let errorMessage = error.message;
+        let errorDetails = '';
+        
+        // Detectar errores de conexión
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMessage = 'No se pudo conectar con el servidor';
+            errorDetails = `
+                <small style="margin-top: 0.5rem; display: block;">
+                    <strong>Posibles causas:</strong><br>
+                    • Spring Boot no está ejecutándose<br>
+                    • El servidor está en un puerto diferente<br>
+                    • Problema de red o firewall<br><br>
+                    <strong>Solución:</strong> Inicia Spring Boot con <code>mvn spring-boot:run</code>
+                </small>
+            `;
+        } else if (error.message.includes('404')) {
+            errorDetails = `
+                <small style="margin-top: 0.5rem; display: block;">
+                    Verifica que el endpoint <code>${API_BASE}/neo4j/data</code> esté disponible.
+                </small>
+            `;
+        }
+        
         loadings.forEach(id => {
             const loading = document.getElementById(id);
             if (loading) {
                 loading.innerHTML = `
                     <div style="color: var(--danger-color); padding: 1rem;">
-                        <i class="fas fa-times-circle"></i> Error: ${error.message}
+                        <i class="fas fa-times-circle"></i> <strong>Error:</strong> ${errorMessage}
+                        ${errorDetails}
                     </div>
                 `;
             }
         });
+        console.error('Error cargando rutas:', error);
     }
 }
 
@@ -2598,7 +3677,20 @@ async function cargarCamionesGreedy() {
         const response = await fetch(`${API_BASE}/neo4j/data`);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            if (response.status === 404) {
+                loading.innerHTML = `
+                    <div style="color: var(--danger-color); padding: 1rem;">
+                        <i class="fas fa-exclamation-circle"></i> <strong>Error 404:</strong> Endpoint no encontrado.<br>
+                        <small style="margin-top: 0.5rem; display: block;">
+                            Verifica que Spring Boot esté corriendo en el puerto 8080.<br>
+                            URL esperada: <code>${API_BASE}/neo4j/data</code>
+                        </small>
+                    </div>
+                `;
+                return;
+            }
+            const errorText = await response.text();
+            throw new Error(`Error HTTP ${response.status}: ${errorText || 'Error desconocido'}`);
         }
         
         const data = await response.json();
@@ -2642,13 +3734,39 @@ async function cargarCamionesGreedy() {
         container.style.display = 'grid';
     } catch (error) {
         console.error('Error al cargar camiones:', error);
-        loading.innerHTML = `
-            <div style="color: var(--danger-color); padding: 1rem;">
-                <i class="fas fa-times-circle"></i> <strong>Error al cargar camiones</strong><br>
-                <small>${error.message}</small><br>
+        let errorMessage = error.message;
+        let errorDetails = '';
+        
+        // Detectar errores de conexión
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMessage = 'No se pudo conectar con el servidor';
+            errorDetails = `
+                <small style="margin-top: 0.5rem; display: block;">
+                    <strong>Posibles causas:</strong><br>
+                    • Spring Boot no está ejecutándose<br>
+                    • El servidor está en un puerto diferente<br>
+                    • Problema de red o firewall<br><br>
+                    <strong>Solución:</strong> Inicia Spring Boot con <code>mvn spring-boot:run</code>
+                </small>
+            `;
+        } else if (error.message.includes('404')) {
+            errorDetails = `
+                <small style="margin-top: 0.5rem; display: block;">
+                    Verifica que el endpoint <code>${API_BASE}/neo4j/data</code> esté disponible.
+                </small>
+            `;
+        } else {
+            errorDetails = `
                 <small style="margin-top: 0.5rem; display: block;">
                     Verifica que Spring Boot esté ejecutándose y que Neo4j esté conectado.
                 </small>
+            `;
+        }
+        
+        loading.innerHTML = `
+            <div style="color: var(--danger-color); padding: 1rem;">
+                <i class="fas fa-times-circle"></i> <strong>Error al cargar camiones:</strong> ${errorMessage}
+                ${errorDetails}
             </div>
         `;
     }
@@ -2900,37 +4018,32 @@ async function distribuirCombustiblePersonalizado() {
 }
 
 function showResultFuelPersonalizado(data) {
-    // Layout principal: Grid de 2 columnas
-    let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">';
+    // ID único para las pestañas
+    const tabsId = `tabs-fuel-personalizado-${Date.now()}`;
     
-    // ===== COLUMNA IZQUIERDA: CAMIONES =====
-    html += '<div>';
-    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
-    html += '<i class="fas fa-truck"></i> Camiones Seleccionados';
-    html += '</h3>';
-    html += '<div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">';
-    
+    // Generar HTML de camiones seleccionados
+    let camionesHtml = '';
     data.camionesDetalle.forEach(camion => {
         const porcentaje = camion.porcentajeFinal.toFixed(1);
         const fuelClass = getFuelClassGreedy(porcentaje);
         const porcentajeInicial = ((camion.combustibleActual / camion.capacidadTotal) * 100).toFixed(1);
         
-        html += `
-            <div style="background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 2px solid var(--border-color);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-color);">${camion.truckId}</div>
-                    <div style="background: var(--primary-color); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${camion.licensePlate}</div>
+        camionesHtml += `
+            <div style="background: var(--card-bg); padding: 1.25rem; border-radius: 12px; border: 2px solid var(--border-color); margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-color);">${camion.truckId}</div>
+                    <div style="background: var(--primary-color); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">${camion.licensePlate}</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin: 0.25rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin: 0.5rem 0;">
                     <span style="color: var(--text-secondary);">Antes:</span>
                     <strong>${camion.combustibleActual}L (${porcentajeInicial}%)</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin: 0.25rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin: 0.5rem 0;">
                     <span style="color: var(--text-secondary);">Ahora:</span>
                     <strong style="color: var(--success-color);">${camion.combustibleFinal}L (${porcentaje}%)</strong>
                 </div>
-                <div style="height: 18px; background: var(--dark-bg); border-radius: 9px; overflow: hidden; margin-top: 0.5rem;">
-                    <div class="truck-fuel-fill ${fuelClass}" style="width: ${porcentaje}%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">
+                <div style="height: 20px; background: var(--dark-bg); border-radius: 10px; overflow: hidden; margin-top: 0.75rem;">
+                    <div class="truck-fuel-fill ${fuelClass}" style="width: ${porcentaje}%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">
                         ${porcentaje}%
                     </div>
                 </div>
@@ -2938,37 +4051,23 @@ function showResultFuelPersonalizado(data) {
         `;
     });
     
-    html += '</div>';
-    html += '</div>'; // Fin columna izquierda
-    
-    // ===== COLUMNA DERECHA: ASIGNACIÓN PASO A PASO =====
-    html += '<div>';
-    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
-    html += '<i class="fas fa-list-ol"></i> Asignación Paso a Paso';
-    html += '</h3>';
-    html += '<div style="max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">';
-    
-    // Generar pasos basados en el orden de asignación
+    // Generar pasos de asignación
+    let stepsHtml = '';
     let pasoNum = 1;
     let combustibleRestante = data.combustibleDisponible;
     
     data.camionesDetalle.forEach(camion => {
         if (camion.combustibleAsignado > 0) {
-            html += `
-                <div style="background: var(--card-bg); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; border-left: 4px solid var(--primary-color);">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                        <div style="background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
-                            ${pasoNum}
-                        </div>
-                        <div style="font-weight: 600; color: var(--text-primary);">Asignar a ${camion.truckId}</div>
-                    </div>
-                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-left: 2.5rem;">
+            stepsHtml += `
+                <div class="modal-step">
+                    <div class="modal-step-number">${pasoNum}</div>
+                    <div class="modal-step-content">
+                        <div class="modal-step-title">Paso ${pasoNum}: Asignar a ${camion.truckId}</div>
+                        <div class="modal-step-description">
                         Greedy asigna combustible al camión con menor nivel.
                     </div>
-                    <div style="background: var(--dark-bg); padding: 0.75rem; border-radius: 6px; margin-top: 0.5rem; margin-left: 2.5rem; font-size: 0.85rem;">
-                        <div style="color: var(--primary-color); margin-bottom: 0.25rem;">
-                            <strong>Asignado:</strong> ${camion.combustibleAsignado}L | 
-                            <strong>Total asignado:</strong> ${data.combustibleDisponible - combustibleRestante + camion.combustibleAsignado}L
+                        <div class="modal-step-result">
+                            Asignado: ${camion.combustibleAsignado}L | Total asignado: ${data.combustibleDisponible - combustibleRestante + camion.combustibleAsignado}L
                         </div>
                     </div>
                 </div>
@@ -2978,71 +4077,18 @@ function showResultFuelPersonalizado(data) {
         }
     });
     
-    html += '</div>';
-    html += '</div>'; // Fin columna derecha
-    
-    html += '</div>'; // Fin grid principal
-    
-    // ===== ESTADÍSTICAS DE COMBUSTIBLE =====
-    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem;">';
-    
-    html += `
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
-            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
-                <i class="fas fa-oil-can"></i> Combustible Disponible
-            </div>
-            <div style="font-size: 2.5rem; font-weight: 700;">
-                ${data.combustibleDisponible}L
-            </div>
-        </div>
-    `;
-    
-    html += `
-        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
-            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
-                <i class="fas fa-check-circle"></i> Combustible Asignado
-            </div>
-            <div style="font-size: 2.5rem; font-weight: 700;">
-                ${data.combustibleAsignado}L
-            </div>
-        </div>
-    `;
-    
-    html += `
-        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1.5rem; border-radius: 10px; text-align: center; color: white;">
-            <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem;">
-                <i class="fas fa-battery-half"></i> Combustible Restante
-            </div>
-            <div style="font-size: 2.5rem; font-weight: 700;">
-                ${data.combustibleRestante}L
-            </div>
-        </div>
-    `;
-    
-    html += '</div>';
-    
-    // ===== ¿CÓMO FUNCIONA EL ALGORITMO? =====
-    html += '<div style="margin-top: 2rem; background: rgba(102, 126, 234, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid var(--primary-color);">';
-    html += '<h3 style="margin-bottom: 1rem; color: var(--primary-color); display: flex; align-items: center; gap: 0.5rem;">';
-    html += '<i class="fas fa-brain"></i> ¿Cómo Funciona el Algoritmo?';
-    html += '</h3>';
-    html += '<div style="color: var(--text-primary); line-height: 1.8; font-size: 0.95rem;">';
-    html += '<p style="margin-bottom: 0.75rem;"><strong>Algoritmo Greedy</strong> - Estrategia de decisiones locales óptimas para distribución de recursos.</p>';
-    html += '<p style="margin-bottom: 0.5rem;"><strong>Objetivo:</strong> Distribuir combustible priorizando los camiones con menor nivel de combustible actual.</p>';
-    html += '</div>';
-    html += '</div>';
-    
-    // ===== PASO A PASO DETALLADO =====
-    html += '<div style="margin-top: 1.5rem; background: var(--card-bg); padding: 1.5rem; border-radius: 10px;">';
-    html += '<h3 style="margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">';
-    html += '<i class="fas fa-clipboard-list"></i> Paso a Paso Detallado del Algoritmo';
-    html += '</h3>';
-    html += '<div style="display: flex; flex-direction: column; gap: 1rem;">';
-    
-    // Paso 1
-    html += `
+    // Generar explicación detallada
+    let explicacionDetallada = `
+        <p><strong>Algoritmo Greedy</strong> - Estrategia de decisiones locales óptimas para distribución de recursos.</p>
+        <p><strong>Objetivo:</strong> Distribuir combustible priorizando los camiones con menor nivel de combustible actual.</p>
+        
+        <div style="margin-top: 2rem;">
+            <h4 style="color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-clipboard-list"></i> Paso a Paso Detallado del Algoritmo
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
         <div style="display: flex; gap: 1rem; align-items: start;">
-            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                    <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
                 1
             </div>
             <div style="flex: 1;">
@@ -3050,12 +4096,9 @@ function showResultFuelPersonalizado(data) {
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Se obtienen los ${data.totalCamionesSeleccionados} camiones que seleccionaste de la base de datos Neo4j con su información de combustible actual.</div>
             </div>
         </div>
-    `;
     
-    // Paso 2
-    html += `
         <div style="display: flex; gap: 1rem; align-items: start;">
-            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                    <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
                 2
             </div>
             <div style="flex: 1;">
@@ -3063,12 +4106,9 @@ function showResultFuelPersonalizado(data) {
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Para cada camión se calcula: <code style="background: var(--dark-bg); padding: 2px 6px; border-radius: 3px;">necesidad = capacidad - combustibleActual</code></div>
             </div>
         </div>
-    `;
     
-    // Paso 3
-    html += `
         <div style="display: flex; gap: 1rem; align-items: start;">
-            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                    <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
                 3
             </div>
             <div style="flex: 1;">
@@ -3076,12 +4116,9 @@ function showResultFuelPersonalizado(data) {
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Se ordenan los camiones de <strong>menor a mayor porcentaje</strong> de combustible. Los más vacíos tienen mayor prioridad.</div>
             </div>
         </div>
-    `;
     
-    // Paso 4
-    html += `
         <div style="display: flex; gap: 1rem; align-items: start;">
-            <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                    <div style="background: var(--primary-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
                 4
             </div>
             <div style="flex: 1;">
@@ -3089,28 +4126,149 @@ function showResultFuelPersonalizado(data) {
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Para cada camión (en orden de prioridad), asignar: <code style="background: var(--dark-bg); padding: 2px 6px; border-radius: 3px;">min(necesidad, combustibleRestante)</code></div>
             </div>
         </div>
-    `;
     
-    // Paso 5
-    html += `
         <div style="display: flex; gap: 1rem; align-items: start;">
-            <div style="background: var(--success-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;">
+                    <div style="background: var(--success-color); color: white; min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; flex-shrink: 0;">
                 ✓
             </div>
             <div style="flex: 1;">
                 <div style="font-weight: 600; color: var(--success-color); margin-bottom: 0.25rem;">Resultado Final</div>
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">Se distribuyeron <strong>${data.combustibleAsignado}L</strong> entre ${data.totalCamionesSeleccionados} camiones, dejando <strong>${data.camionesLlenos} camiones llenos</strong> al 100%.</div>
             </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem; padding: 1rem; background: var(--dark-bg); border-radius: 8px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+            <i class="fas fa-clock"></i> <strong>Complejidad:</strong> O(n log n) donde n = número de camiones seleccionados
         </div>
     `;
     
-    html += '</div>'; // Fin pasos detallados
-    html += '</div>'; // Fin sección paso a paso
-    
-    // Complejidad
-    html += '<div style="margin-top: 1rem; padding: 1rem; background: var(--dark-bg); border-radius: 8px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">';
-    html += '<i class="fas fa-clock"></i> <strong>Complejidad:</strong> O(n log n) donde n = número de camiones seleccionados';
-    html += '</div>';
+    let html = `
+        <!-- Sistema de Pestañas -->
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="camiones">
+                    <i class="fas fa-truck"></i> Camiones
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${data.combustibleAsignado}L</div>
+                        <div class="modal-highlight-label">Combustible Asignado</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                            <div class="modal-stat-icon"><i class="fas fa-oil-can"></i></div>
+                            <div class="modal-stat-label">Disponible</div>
+                            <div class="modal-stat-value">${data.combustibleDisponible}L</div>
+                        </div>
+                        <div class="modal-stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; border: none;">
+                            <div class="modal-stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="modal-stat-label">Asignado</div>
+                            <div class="modal-stat-value">${data.combustibleAsignado}L</div>
+                        </div>
+                        <div class="modal-stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
+                            <div class="modal-stat-icon"><i class="fas fa-battery-half"></i></div>
+                            <div class="modal-stat-label">Restante</div>
+                            <div class="modal-stat-value">${data.combustibleRestante}L</div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 1.5rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-truck"></i></div>
+                            <div class="modal-stat-label">Camiones Seleccionados</div>
+                            <div class="modal-stat-value">${data.totalCamionesSeleccionados}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="modal-stat-label">Camiones Llenos</div>
+                            <div class="modal-stat-value">${data.camionesLlenos}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Camiones -->
+                <div class="modal-tab-pane" data-tab-content="camiones">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-truck"></i> Camiones Seleccionados
+                        </div>
+                        ${camionesHtml}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-steps"></i> Asignación Paso a Paso
+                        </div>
+                        ${stepsHtml}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona?
+                        </div>
+                        <div class="modal-explanation-text">
+                            ${explicacionDetallada}
+                        </div>
+                    </div>
+                </div>
+                
+                ${generateCodeTab('greedy-fuel', data)}
+            </div>
+        </div>
+        
+        <script>
+            // Inicializar pestañas después de que el modal se muestre
+            (function() {
+                const tabsContainer = document.getElementById('${tabsId}');
+                if (tabsContainer) {
+                    const tabButtons = tabsContainer.querySelectorAll('.modal-tab-btn');
+                    const tabPanes = tabsContainer.querySelectorAll('.modal-tab-pane');
+                    
+                    tabButtons.forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const targetTab = this.getAttribute('data-tab');
+                            
+                            // Remover active de todos los botones y paneles
+                            tabButtons.forEach(b => b.classList.remove('active'));
+                            tabPanes.forEach(p => p.classList.remove('active'));
+                            
+                            // Agregar active al botón y panel seleccionado
+                            this.classList.add('active');
+                            const targetPane = tabsContainer.querySelector(\`[data-tab-content="\${targetTab}"]\`);
+                            if (targetPane) {
+                                targetPane.classList.add('active');
+                            }
+                        });
+                    });
+                }
+            })();
+        </script>
+    `;
     
     // Mostrar en el modal
     mostrarModal('🚛 Distribución de Combustible - Algoritmo Greedy', html);
@@ -3349,11 +4507,7 @@ async function cargarDatosNeo4jKruskal() {
             centersContainer.innerHTML = '<div class="loading-placeholder">No hay centros disponibles</div>';
         } else {
             centers.forEach(center => {
-                const item = document.createElement('div');
-                item.className = 'selectable-item';
-                item.dataset.id = center.id || '';
-                item.textContent = center.name || 'Sin nombre';
-                item.onclick = () => toggleSelection(item, 'center');
+                const item = renderCenterCard(center, (el) => toggleSelection(el, 'center'), true);
                 centersContainer.appendChild(item);
             });
         }
@@ -3364,11 +4518,7 @@ async function cargarDatosNeo4jKruskal() {
             routesContainer.innerHTML = '<div class="loading-placeholder">No hay rutas disponibles</div>';
         } else {
             routes.forEach(route => {
-                const item = document.createElement('div');
-                item.className = 'selectable-item';
-                item.dataset.id = route.id || '';
-                item.textContent = route.name || route.id || 'Sin nombre';
-                item.onclick = () => toggleSelection(item, 'route');
+                const item = renderRouteCard(route, (el) => toggleSelection(el, 'route'), true);
                 routesContainer.appendChild(item);
             });
         }
@@ -3393,6 +4543,331 @@ async function cargarDatosNeo4jKruskal() {
         routesLoading.style.display = 'none';
     }
 }
+
+// ==========================================
+// FUNCIONES DE RENDERIZADO MODERNAS
+// ==========================================
+
+/**
+ * Renderiza una tarjeta moderna de ruta con acordeón expandible
+ */
+function renderRouteCard(route, onClick, isSelected = false) {
+    const item = document.createElement('div');
+    item.className = `selectable-item route-card ${isSelected ? 'selected' : ''}`;
+    item.dataset.id = route.id || '';
+    item.dataset.cost = route.cost || 0;
+    item.dataset.distance = route.distance || 0;
+    
+    const uniqueId = `route-${route.id || Math.random().toString(36).substr(2, 9)}`;
+    
+    item.innerHTML = `
+        <div class="route-card-content">
+            <div class="route-card-header" onclick="event.stopPropagation(); toggleRouteAccordion('${uniqueId}')">
+                <div class="route-icon">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div class="route-name-section">
+                    <h4 class="route-name">${route.name || route.id || 'Sin nombre'}</h4>
+                    <span class="route-id">${route.id || ''}</span>
+                </div>
+                <div class="route-header-actions">
+                    <div class="route-checkbox" onclick="event.stopPropagation();">
+                        <i class="${isSelected ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
+                    </div>
+                    <button class="route-expand-btn" onclick="event.stopPropagation(); toggleRouteAccordion('${uniqueId}')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="route-card-body accordion-content" id="${uniqueId}">
+                <div class="route-stats-grid">
+                    ${route.cost !== undefined ? `
+                    <div class="route-stat-card cost-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Costo Total</span>
+                            <span class="stat-value">$${route.cost?.toLocaleString() || 0}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${route.distance !== undefined ? `
+                    <div class="route-stat-card distance-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-road"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Distancia</span>
+                            <span class="stat-value">${route.distance?.toLocaleString() || 0} km</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${route.duration ? `
+                    <div class="route-stat-card duration-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Duración</span>
+                            <span class="stat-value">${route.duration} min</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${route.fuelConsumption ? `
+                    <div class="route-stat-card fuel-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-gas-pump"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Consumo</span>
+                            <span class="stat-value">${route.fuelConsumption} L/km</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                ${route.fromCenter && route.toCenter ? `
+                <div class="route-connection-card">
+                    <div class="connection-path">
+                        <div class="connection-point">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${route.fromCenter}</span>
+                        </div>
+                        <div class="connection-line">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        <div class="connection-point">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${route.toCenter}</span>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                ${route.roadType || route.trafficLevel ? `
+                <div class="route-details-grid">
+                    ${route.roadType ? `
+                    <div class="detail-badge road-type-${route.roadType?.toLowerCase() || 'highway'}">
+                        <i class="fas fa-road"></i>
+                        <span>${route.roadType}</span>
+                    </div>
+                    ` : ''}
+                    ${route.trafficLevel ? `
+                    <div class="detail-badge traffic-level-${route.trafficLevel}">
+                        <i class="fas fa-traffic-light"></i>
+                        <span>Tráfico: ${route.trafficLevel}/5</span>
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Manejar click en la tarjeta (selección)
+    const header = item.querySelector('.route-card-header');
+    const checkbox = item.querySelector('.route-checkbox');
+    
+    checkbox.onclick = (e) => {
+        e.stopPropagation();
+        item.classList.toggle('selected');
+        const checkboxIcon = checkbox.querySelector('i');
+        if (item.classList.contains('selected')) {
+            checkboxIcon.classList.remove('far', 'fa-circle');
+            checkboxIcon.classList.add('fas', 'fa-check-circle');
+        } else {
+            checkboxIcon.classList.remove('fas', 'fa-check-circle');
+            checkboxIcon.classList.add('far', 'fa-circle');
+        }
+        if (onClick) onClick(item);
+    };
+    
+    // Click en el header para expandir/colapsar
+    header.onclick = (e) => {
+        if (e.target.closest('.route-checkbox') || e.target.closest('.route-expand-btn')) return;
+        toggleRouteAccordion(uniqueId);
+    };
+    
+    return item;
+}
+
+// Función global para toggle del acordeón
+window.toggleRouteAccordion = function(id) {
+    const accordion = document.getElementById(id);
+    if (!accordion) return;
+    
+    const isExpanded = accordion.classList.contains('expanded');
+    const icon = accordion.closest('.route-card').querySelector('.route-expand-btn i');
+    
+    if (isExpanded) {
+        accordion.classList.remove('expanded');
+        accordion.style.maxHeight = '0';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        accordion.classList.add('expanded');
+        accordion.style.maxHeight = accordion.scrollHeight + 'px';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    }
+};
+
+/**
+ * Renderiza una tarjeta moderna de centro de distribución con acordeón
+ */
+function renderCenterCard(center, onClick, isSelected = false) {
+    const item = document.createElement('div');
+    item.className = `selectable-item center-card ${isSelected ? 'selected' : ''}`;
+    item.dataset.id = center.id || '';
+    
+    const uniqueId = `center-${center.id || Math.random().toString(36).substr(2, 9)}`;
+    const priorityBadge = center.priority ? `
+        <div class="priority-indicator priority-${Math.min(center.priority, 5)}">
+            <i class="fas fa-flag"></i>
+            <span>Prioridad ${center.priority}</span>
+        </div>
+    ` : '';
+    
+    item.innerHTML = `
+        <div class="center-card-content">
+            <div class="center-card-header" onclick="event.stopPropagation(); toggleCenterAccordion('${uniqueId}')">
+                <div class="center-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <div class="center-name-section">
+                    <h4 class="center-name">${center.name || center.id || 'Sin nombre'}</h4>
+                    <span class="center-id">${center.id || ''}</span>
+                    ${priorityBadge}
+                </div>
+                <div class="center-header-actions">
+                    <div class="center-checkbox" onclick="event.stopPropagation();">
+                        <i class="${isSelected ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
+                    </div>
+                    <button class="center-expand-btn" onclick="event.stopPropagation(); toggleCenterAccordion('${uniqueId}')">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="center-card-body accordion-content" id="${uniqueId}">
+                <div class="center-stats-grid">
+                    ${center.city ? `
+                    <div class="center-stat-card location-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Ciudad</span>
+                            <span class="stat-value">${center.city}</span>
+                            ${center.province ? `<span class="stat-sublabel">${center.province}</span>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${center.demandLevel !== undefined ? `
+                    <div class="center-stat-card demand-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Nivel de Demanda</span>
+                            <span class="stat-value">${center.demandLevel}/100</span>
+                            <div class="demand-bar">
+                                <div class="demand-fill" style="width: ${center.demandLevel}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${center.capacity ? `
+                    <div class="center-stat-card capacity-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-boxes"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Capacidad Total</span>
+                            <span class="stat-value">${center.capacity?.toLocaleString()} kg</span>
+                            ${center.currentLoad !== undefined ? `
+                            <div class="capacity-usage">
+                                <span class="usage-label">En uso: ${center.currentLoad?.toLocaleString()} kg</span>
+                                <div class="usage-bar">
+                                    <div class="usage-fill" style="width: ${(center.currentLoad / center.capacity * 100).toFixed(0)}%"></div>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${center.operatingCost ? `
+                    <div class="center-stat-card cost-stat">
+                        <div class="stat-icon-wrapper">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Costo Operativo</span>
+                            <span class="stat-value">$${center.operatingCost?.toLocaleString()}/día</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+                ${center.coordinates ? `
+                <div class="center-location-card">
+                    <i class="fas fa-globe"></i>
+                    <span>Coordenadas: ${center.coordinates}</span>
+                </div>
+                ` : ''}
+                ${center.status ? `
+                <div class="center-status-badge status-${center.status?.toLowerCase() || 'active'}">
+                    <i class="fas fa-circle"></i>
+                    <span>${center.status}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Manejar click en checkbox
+    const checkbox = item.querySelector('.center-checkbox');
+    checkbox.onclick = (e) => {
+        e.stopPropagation();
+        item.classList.toggle('selected');
+        const checkboxIcon = checkbox.querySelector('i');
+        if (item.classList.contains('selected')) {
+            checkboxIcon.classList.remove('far', 'fa-circle');
+            checkboxIcon.classList.add('fas', 'fa-check-circle');
+        } else {
+            checkboxIcon.classList.remove('fas', 'fa-check-circle');
+            checkboxIcon.classList.add('far', 'fa-circle');
+        }
+        if (onClick) onClick(item);
+    };
+    
+    // Click en header para expandir
+    const header = item.querySelector('.center-card-header');
+    header.onclick = (e) => {
+        if (e.target.closest('.center-checkbox') || e.target.closest('.center-expand-btn')) return;
+        toggleCenterAccordion(uniqueId);
+    };
+    
+    return item;
+}
+
+// Función global para toggle del acordeón de centros
+window.toggleCenterAccordion = function(id) {
+    const accordion = document.getElementById(id);
+    if (!accordion) return;
+    
+    const isExpanded = accordion.classList.contains('expanded');
+    const icon = accordion.closest('.center-card').querySelector('.center-expand-btn i');
+    
+    if (isExpanded) {
+        accordion.classList.remove('expanded');
+        accordion.style.maxHeight = '0';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        accordion.classList.add('expanded');
+        accordion.style.maxHeight = accordion.scrollHeight + 'px';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    }
+};
 
 // Toggle selección de items
 function toggleSelection(item, type) {
@@ -3628,11 +5103,7 @@ async function cargarDatosNeo4jDijkstra() {
             centersContainer.innerHTML = '<div class="loading-placeholder">No hay centros disponibles</div>';
         } else {
             centers.forEach(center => {
-                const item = document.createElement('div');
-                item.className = 'selectable-item selected';
-                item.dataset.id = center.id || '';
-                item.textContent = center.name || center.id || 'Sin nombre';
-                item.onclick = () => toggleSelectionDijkstra(item, 'center');
+                const item = renderCenterCard(center, (el) => toggleSelectionDijkstra(el, 'center'), true);
                 centersContainer.appendChild(item);
             });
         }
@@ -3643,11 +5114,7 @@ async function cargarDatosNeo4jDijkstra() {
             routesContainer.innerHTML = '<div class="loading-placeholder">No hay rutas disponibles</div>';
         } else {
             routes.forEach(route => {
-                const item = document.createElement('div');
-                item.className = 'selectable-item selected';
-                item.dataset.id = route.id || '';
-                item.textContent = route.name || route.id || 'Sin nombre';
-                item.onclick = () => toggleSelectionDijkstra(item, 'route');
+                const item = renderRouteCard(route, (el) => toggleSelectionDijkstra(el, 'route'), true);
                 routesContainer.appendChild(item);
             });
         }
@@ -3882,6 +5349,7 @@ async function calcularDijkstra() {
         });
         data.edges = edges;
         
+        hideLoading();
         showResult('dijkstra-result', data, true);
     } catch (error) {
         console.error('Error al calcular Dijkstra:', error);
@@ -4413,5 +5881,2317 @@ window.addEventListener('DOMContentLoaded', () => {
     loadNeo4jData();
     // Recargar cada 30 segundos para mantener datos actualizados
     setInterval(loadNeo4jData, 30000);
+});
+
+// Función auxiliar para generar código de algoritmos
+function generateCodeTab(algorithmType, data, additionalParams = {}) {
+    let codeContent = '';
+    let explanationContent = '';
+    let exampleContent = '';
+    
+    switch(algorithmType) {
+        case 'recursive-combined':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Calcula métricas combinadas usando recursión</span>
+<span class="code-comment"> * Complejidad: O(n) donde n es el número de tramos</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">RouteMetrics</span> <span class="code-function">calcularMetricasCombinadas</span>(<span class="code-keyword">double</span>[] <span class="code-variable">costs</span>, <span class="code-keyword">double</span>[] <span class="code-variable">distances</span>, <span class="code-keyword">int</span> <span class="code-variable">index</span>) {
+    <span class="code-keyword">if</span> (<span class="code-variable">index</span> == <span class="code-variable">costs</span>.<span class="code-property">length</span>) {
+        <span class="code-keyword">return</span> <span class="code-keyword">new</span> <span class="code-class">RouteMetrics</span>(<span class="code-number">0</span>, <span class="code-number">0</span>, <span class="code-number">0</span>);
+    }
+    
+    <span class="code-class">RouteMetrics</span> <span class="code-variable">resto</span> = <span class="code-function">calcularMetricasCombinadas</span>(<span class="code-variable">costs</span>, <span class="code-variable">distances</span>, <span class="code-variable">index</span> + <span class="code-number">1</span>);
+    
+    <span class="code-keyword">double</span> <span class="code-variable">costoTotal</span> = <span class="code-variable">costs</span>[<span class="code-variable">index</span>] + <span class="code-variable">resto</span>.<span class="code-function">getCostoTotal</span>();
+    <span class="code-keyword">double</span> <span class="code-variable">distanciaTotal</span> = <span class="code-variable">distances</span>[<span class="code-variable">index</span>] + <span class="code-variable">resto</span>.<span class="code-function">getDistanciaTotal</span>();
+    <span class="code-keyword">double</span> <span class="code-variable">costoPorKm</span> = <span class="code-variable">distanciaTotal</span> > <span class="code-number">0</span> ? <span class="code-variable">costoTotal</span> / <span class="code-variable">distanciaTotal</span> : <span class="code-number">0</span>;
+    
+    <span class="code-keyword">return</span> <span class="code-keyword">new</span> <span class="code-class">RouteMetrics</span>(<span class="code-variable">costoTotal</span>, <span class="code-variable">distanciaTotal</span>, <span class="code-variable">costoPorKm</span>);
+}`;
+            break;
+        case 'mergesort':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * MergeSort: Divide y Vencerás</span>
+<span class="code-comment"> * Complejidad: O(n log n)</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">mergeSort</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centros</span>, <span class="code-keyword">int</span> <span class="code-variable">left</span>, <span class="code-keyword">int</span> <span class="code-variable">right</span>) {
+    <span class="code-keyword">if</span> (<span class="code-variable">left</span> < <span class="code-variable">right</span>) {
+        <span class="code-keyword">int</span> <span class="code-variable">mid</span> = (<span class="code-variable">left</span> + <span class="code-variable">right</span>) / <span class="code-number">2</span>;
+        <span class="code-function">mergeSort</span>(<span class="code-variable">centros</span>, <span class="code-variable">left</span>, <span class="code-variable">mid</span>);
+        <span class="code-function">mergeSort</span>(<span class="code-variable">centros</span>, <span class="code-variable">mid</span> + <span class="code-number">1</span>, <span class="code-variable">right</span>);
+        <span class="code-function">merge</span>(<span class="code-variable">centros</span>, <span class="code-variable">left</span>, <span class="code-variable">mid</span>, <span class="code-variable">right</span>);
+    }
+}`;
+            break;
+        case 'quicksort':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * QuickSort: Divide y Vencerás</span>
+<span class="code-comment"> * Complejidad: O(n log n) promedio, O(n²) peor caso</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">quickSort</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centros</span>, <span class="code-keyword">int</span> <span class="code-variable">left</span>, <span class="code-keyword">int</span> <span class="code-variable">right</span>) {
+    <span class="code-keyword">if</span> (<span class="code-variable">left</span> < <span class="code-variable">right</span>) {
+        <span class="code-keyword">int</span> <span class="code-variable">pivot</span> = <span class="code-function">partition</span>(<span class="code-variable">centros</span>, <span class="code-variable">left</span>, <span class="code-variable">right</span>);
+        <span class="code-function">quickSort</span>(<span class="code-variable">centros</span>, <span class="code-variable">left</span>, <span class="code-variable">pivot</span> - <span class="code-number">1</span>);
+        <span class="code-function">quickSort</span>(<span class="code-variable">centros</span>, <span class="code-variable">pivot</span> + <span class="code-number">1</span>, <span class="code-variable">right</span>);
+    }
+}`;
+            break;
+        case 'binary-search':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Búsqueda Binaria: Divide y Vencerás</span>
+<span class="code-comment"> * Complejidad: O(log n)</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">int</span> <span class="code-function">binarySearch</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centros</span>, <span class="code-keyword">int</span> <span class="code-variable">target</span>, <span class="code-keyword">int</span> <span class="code-variable">left</span>, <span class="code-keyword">int</span> <span class="code-variable">right</span>) {
+    <span class="code-keyword">if</span> (<span class="code-variable">left</span> > <span class="code-variable">right</span>) <span class="code-keyword">return</span> -<span class="code-number">1</span>;
+    
+    <span class="code-keyword">int</span> <span class="code-variable">mid</span> = (<span class="code-variable">left</span> + <span class="code-variable">right</span>) / <span class="code-number">2</span>;
+    <span class="code-keyword">int</span> <span class="code-variable">midValue</span> = <span class="code-variable">centros</span>.<span class="code-function">get</span>(<span class="code-variable">mid</span>).<span class="code-function">getDemandLevel</span>();
+    
+    <span class="code-keyword">if</span> (<span class="code-variable">midValue</span> == <span class="code-variable">target</span>) <span class="code-keyword">return</span> <span class="code-variable">mid</span>;
+    <span class="code-keyword">if</span> (<span class="code-variable">midValue</span> > <span class="code-variable">target</span>) 
+        <span class="code-keyword">return</span> <span class="code-function">binarySearch</span>(<span class="code-variable">centros</span>, <span class="code-variable">target</span>, <span class="code-variable">left</span>, <span class="code-variable">mid</span> - <span class="code-number">1</span>);
+    <span class="code-keyword">return</span> <span class="code-function">binarySearch</span>(<span class="code-variable">centros</span>, <span class="code-variable">target</span>, <span class="code-variable">mid</span> + <span class="code-number">1</span>, <span class="code-variable">right</span>);
+}`;
+            break;
+        case 'greedy-fuel':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Distribución de Combustible - Algoritmo Greedy</span>
+<span class="code-comment"> * Complejidad: O(n) donde n es el número de tamaños</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">Integer</span>&gt; <span class="code-function">distribuirCombustible</span>(<span class="code-keyword">int</span> <span class="code-variable">cantidadRequerida</span>, <span class="code-class">List</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">tamanos</span>) {
+    <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">Integer</span>&gt; <span class="code-variable">distribucion</span> = <span class="code-keyword">new</span> <span class="code-class">HashMap</span>&lt;&gt;();
+    <span class="code-class">Collections</span>.<span class="code-function">sort</span>(<span class="code-variable">tamanos</span>, <span class="code-class">Collections</span>.<span class="code-function">reverseOrder</span>());
+    
+    <span class="code-keyword">int</span> <span class="code-variable">restante</span> = <span class="code-variable">cantidadRequerida</span>;
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">tamano</span> : <span class="code-variable">tamanos</span>) {
+        <span class="code-keyword">if</span> (<span class="code-variable">restante</span> >= <span class="code-variable">tamano</span>) {
+            <span class="code-keyword">int</span> <span class="code-variable">cantidad</span> = <span class="code-variable">restante</span> / <span class="code-variable">tamano</span>;
+            <span class="code-variable">distribucion</span>.<span class="code-function">put</span>(<span class="code-variable">tamano</span>, <span class="code-variable">cantidad</span>);
+            <span class="code-variable">restante</span> %= <span class="code-variable">tamano</span>;
+        }
+    }
+    <span class="code-keyword">return</span> <span class="code-variable">distribucion</span>;
+}`;
+            break;
+        case 'greedy-budget':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Distribución de Presupuesto - Mochila Fraccional Greedy</span>
+<span class="code-comment"> * Complejidad: O(n log n) por el ordenamiento</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-keyword">double</span>&gt; <span class="code-function">distribuirPresupuesto</span>(<span class="code-class">List</span>&lt;<span class="code-class">Proyecto</span>&gt; <span class="code-variable">proyectos</span>, <span class="code-keyword">double</span> <span class="code-variable">presupuestoTotal</span>) {
+    <span class="code-comment">// Ordenar por ratio beneficio/costo (descendente)</span>
+    <span class="code-variable">proyectos</span>.<span class="code-function">sort</span>((a, b) -> {
+        <span class="code-keyword">double</span> <span class="code-variable">ratioA</span> = (<span class="code-keyword">double</span>) a.<span class="code-property">beneficio</span> / a.<span class="code-property">costo</span>;
+        <span class="code-keyword">double</span> <span class="code-variable">ratioB</span> = (<span class="code-keyword">double</span>) b.<span class="code-property">beneficio</span> / b.<span class="code-property">costo</span>;
+        <span class="code-keyword">return</span> <span class="code-class">Double</span>.<span class="code-function">compare</span>(<span class="code-variable">ratioB</span>, <span class="code-variable">ratioA</span>);
+    });
+    
+    <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-keyword">double</span>&gt; <span class="code-variable">distribucion</span> = <span class="code-keyword">new</span> <span class="code-class">HashMap</span>&lt;&gt;();
+    <span class="code-keyword">double</span> <span class="code-variable">restante</span> = <span class="code-variable">presupuestoTotal</span>;
+    
+    <span class="code-keyword">for</span> (<span class="code-class">Proyecto</span> <span class="code-variable">p</span> : <span class="code-variable">proyectos</span>) {
+        <span class="code-keyword">if</span> (<span class="code-variable">restante</span> >= <span class="code-variable">p</span>.<span class="code-property">costo</span>) {
+            <span class="code-comment">// Asignar el proyecto completo</span>
+            <span class="code-variable">distribucion</span>.<span class="code-function">put</span>(<span class="code-variable">p</span>.<span class="code-property">nombre</span>, <span class="code-variable">p</span>.<span class="code-property">costo</span>);
+            <span class="code-variable">restante</span> -= <span class="code-variable">p</span>.<span class="code-property">costo</span>;
+        } <span class="code-keyword">else</span> <span class="code-keyword">if</span> (<span class="code-variable">restante</span> > <span class="code-number">0</span>) {
+            <span class="code-comment">// Asignar fracción del proyecto</span>
+            <span class="code-variable">distribucion</span>.<span class="code-function">put</span>(<span class="code-variable">p</span>.<span class="code-property">nombre</span>, <span class="code-variable">restante</span>);
+            <span class="code-variable">restante</span> = <span class="code-number">0</span>;
+        }
+    }
+    <span class="code-keyword">return</span> <span class="code-variable">distribucion</span>;
+}`;
+            break;
+        case 'kruskal':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Kruskal: Árbol de Recubrimiento Mínimo (MST)</span>
+<span class="code-comment"> * Complejidad: O(E log E) con Union-Find</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">List</span>&lt;<span class="code-class">Edge</span>&gt; <span class="code-function">kruskalMST</span>(<span class="code-class">List</span>&lt;<span class="code-class">Edge</span>&gt; <span class="code-variable">edges</span>, <span class="code-keyword">int</span> <span class="code-variable">vertices</span>) {
+    <span class="code-class">Collections</span>.<span class="code-function">sort</span>(<span class="code-variable">edges</span>);
+    <span class="code-class">UnionFind</span> <span class="code-variable">uf</span> = <span class="code-keyword">new</span> <span class="code-class">UnionFind</span>(<span class="code-variable">vertices</span>);
+    <span class="code-class">List</span>&lt;<span class="code-class">Edge</span>&gt; <span class="code-variable">mst</span> = <span class="code-keyword">new</span> <span class="code-class">ArrayList</span>&lt;&gt;();
+    
+    <span class="code-keyword">for</span> (<span class="code-class">Edge</span> <span class="code-variable">e</span> : <span class="code-variable">edges</span>) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">uf</span>.<span class="code-function">connected</span>(<span class="code-variable">e</span>.<span class="code-property">from</span>, <span class="code-variable">e</span>.<span class="code-property">to</span>)) {
+            <span class="code-variable">uf</span>.<span class="code-function">union</span>(<span class="code-variable">e</span>.<span class="code-property">from</span>, <span class="code-variable">e</span>.<span class="code-property">to</span>);
+            <span class="code-variable">mst</span>.<span class="code-function">add</span>(<span class="code-variable">e</span>);
+        }
+    }
+    <span class="code-keyword">return</span> <span class="code-variable">mst</span>;
+}`;
+            break;
+        case 'dijkstra':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Dijkstra: Caminos más cortos desde un origen</span>
+<span class="code-comment"> * Complejidad: O((V + E) log V) con heap</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">double</span>[] <span class="code-function">dijkstra</span>(<span class="code-keyword">int</span> <span class="code-variable">source</span>, <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">List</span>&lt;<span class="code-class">int</span>[]&gt;&gt; <span class="code-variable">graph</span>, <span class="code-keyword">int</span> <span class="code-variable">vertices</span>) {
+    <span class="code-keyword">double</span>[] <span class="code-variable">dist</span> = <span class="code-keyword">new</span> <span class="code-keyword">double</span>[<span class="code-variable">vertices</span>];
+    <span class="code-class">Arrays</span>.<span class="code-function">fill</span>(<span class="code-variable">dist</span>, <span class="code-class">Double</span>.<span class="code-property">MAX_VALUE</span>);
+    <span class="code-variable">dist</span>[<span class="code-variable">source</span>] = <span class="code-number">0</span>;
+    
+    <span class="code-class">PriorityQueue</span>&lt;<span class="code-class">Node</span>&gt; <span class="code-variable">pq</span> = <span class="code-keyword">new</span> <span class="code-class">PriorityQueue</span>&lt;&gt;();
+    <span class="code-variable">pq</span>.<span class="code-function">offer</span>(<span class="code-keyword">new</span> <span class="code-class">Node</span>(<span class="code-variable">source</span>, <span class="code-number">0</span>));
+    
+    <span class="code-keyword">while</span> (!<span class="code-variable">pq</span>.<span class="code-function">isEmpty</span>()) {
+        <span class="code-class">Node</span> <span class="code-variable">current</span> = <span class="code-variable">pq</span>.<span class="code-function">poll</span>();
+        <span class="code-keyword">for</span> (<span class="code-class">int</span>[] <span class="code-variable">neighbor</span> : <span class="code-variable">graph</span>.<span class="code-function">get</span>(<span class="code-variable">current</span>.<span class="code-property">id</span>)) {
+            <span class="code-keyword">double</span> <span class="code-variable">newDist</span> = <span class="code-variable">current</span>.<span class="code-property">dist</span> + <span class="code-variable">neighbor</span>[<span class="code-number">1</span>];
+            <span class="code-keyword">if</span> (<span class="code-variable">newDist</span> < <span class="code-variable">dist</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]]) {
+                <span class="code-variable">dist</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]] = <span class="code-variable">newDist</span>;
+                <span class="code-variable">pq</span>.<span class="code-function">offer</span>(<span class="code-keyword">new</span> <span class="code-class">Node</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>], <span class="code-variable">newDist</span>));
+            }
+        }
+    }
+    <span class="code-keyword">return</span> <span class="code-variable">dist</span>;
+}`;
+            break;
+        case 'knapsack-dp':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Mochila 0/1: Programación Dinámica</span>
+<span class="code-comment"> * Complejidad: O(n × P) donde n = proyectos, P = presupuesto</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">int</span> <span class="code-function">knapsack01</span>(<span class="code-class">List</span>&lt;<span class="code-class">Proyecto</span>&gt; <span class="code-variable">proyectos</span>, <span class="code-keyword">int</span> <span class="code-variable">presupuesto</span>) {
+    <span class="code-keyword">int</span> <span class="code-variable">n</span> = <span class="code-variable">proyectos</span>.<span class="code-function">size</span>();
+    <span class="code-keyword">int</span>[][] <span class="code-variable">dp</span> = <span class="code-keyword">new</span> <span class="code-keyword">int</span>[<span class="code-variable">n</span> + <span class="code-number">1</span>][<span class="code-variable">presupuesto</span> + <span class="code-number">1</span>];
+    
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">i</span> = <span class="code-number">1</span>; <span class="code-variable">i</span> <= <span class="code-variable">n</span>; <span class="code-variable">i</span>++) {
+        <span class="code-class">Proyecto</span> <span class="code-variable">p</span> = <span class="code-variable">proyectos</span>.<span class="code-function">get</span>(<span class="code-variable">i</span> - <span class="code-number">1</span>);
+        <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">w</span> = <span class="code-number">0</span>; <span class="code-variable">w</span> <= <span class="code-variable">presupuesto</span>; <span class="code-variable">w</span>++) {
+            <span class="code-variable">dp</span>[<span class="code-variable">i</span>][<span class="code-variable">w</span>] = <span class="code-variable">dp</span>[<span class="code-variable">i</span> - <span class="code-number">1</span>][<span class="code-variable">w</span>];
+            <span class="code-keyword">if</span> (<span class="code-variable">p</span>.<span class="code-property">costo</span> <= <span class="code-variable">w</span>) {
+                <span class="code-variable">dp</span>[<span class="code-variable">i</span>][<span class="code-variable">w</span>] = <span class="code-class">Math</span>.<span class="code-function">max</span>(<span class="code-variable">dp</span>[<span class="code-variable">i</span>][<span class="code-variable">w</span>], 
+                    <span class="code-variable">dp</span>[<span class="code-variable">i</span> - <span class="code-number">1</span>][<span class="code-variable">w</span> - <span class="code-variable">p</span>.<span class="code-property">costo</span>] + <span class="code-variable">p</span>.<span class="code-property">beneficio</span>);
+            }
+        }
+    }
+    <span class="code-keyword">return</span> <span class="code-variable">dp</span>[<span class="code-variable">n</span>][<span class="code-variable">presupuesto</span>];
+}`;
+            break;
+        case 'bfs':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * BFS: Breadth-First Search - Exploración por niveles</span>
+<span class="code-comment"> * Complejidad: O(V + E) donde V = vértices, E = aristas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Object</span>&gt; <span class="code-function">bfs</span>(<span class="code-keyword">int</span> <span class="code-variable">vertices</span>, <span class="code-keyword">int</span> <span class="code-variable">source</span>, 
+        <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">List</span>&lt;<span class="code-class">int</span>[]&gt;&gt; <span class="code-variable">adjacencyList</span>) {
+    <span class="code-class">Queue</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">queue</span> = <span class="code-keyword">new</span> <span class="code-class">LinkedList</span>&lt;&gt;();
+    <span class="code-keyword">boolean</span>[] <span class="code-variable">visited</span> = <span class="code-keyword">new</span> <span class="code-keyword">boolean</span>[<span class="code-variable">vertices</span>];
+    <span class="code-keyword">int</span>[] <span class="code-variable">distances</span> = <span class="code-keyword">new</span> <span class="code-keyword">int</span>[<span class="code-variable">vertices</span>];
+    <span class="code-class">List</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">visitOrder</span> = <span class="code-keyword">new</span> <span class="code-class">ArrayList</span>&lt;&gt;();
+    
+    <span class="code-class">Arrays</span>.<span class="code-function">fill</span>(<span class="code-variable">distances</span>, -<span class="code-number">1</span>);
+    <span class="code-variable">queue</span>.<span class="code-function">offer</span>(<span class="code-variable">source</span>);
+    <span class="code-variable">visited</span>[<span class="code-variable">source</span>] = <span class="code-keyword">true</span>;
+    <span class="code-variable">distances</span>[<span class="code-variable">source</span>] = <span class="code-number">0</span>;
+    <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">source</span>);
+    
+    <span class="code-keyword">while</span> (!<span class="code-variable">queue</span>.<span class="code-function">isEmpty</span>()) {
+        <span class="code-keyword">int</span> <span class="code-variable">current</span> = <span class="code-variable">queue</span>.<span class="code-function">poll</span>();
+        <span class="code-keyword">for</span> (<span class="code-class">int</span>[] <span class="code-variable">neighbor</span> : <span class="code-variable">adjacencyList</span>.<span class="code-function">get</span>(<span class="code-variable">current</span>)) {
+            <span class="code-keyword">if</span> (!<span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]]) {
+                <span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]] = <span class="code-keyword">true</span>;
+                <span class="code-variable">distances</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]] = <span class="code-variable">distances</span>[<span class="code-variable">current</span>] + <span class="code-number">1</span>;
+                <span class="code-variable">queue</span>.<span class="code-function">offer</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]);
+                <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]);
+            }
+        }
+    }
+    <span class="code-comment">// Retornar resultados...</span>
+}`;
+            break;
+        case 'dfs':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * DFS: Depth-First Search - Exploración en profundidad</span>
+<span class="code-comment"> * Complejidad: O(V + E) donde V = vértices, E = aristas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">dfs</span>(<span class="code-keyword">int</span> <span class="code-variable">vertex</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visited</span>, 
+        <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">List</span>&lt;<span class="code-class">int</span>[]&gt;&gt; <span class="code-variable">adjacencyList</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">visitOrder</span>) {
+    <span class="code-variable">visited</span>[<span class="code-variable">vertex</span>] = <span class="code-keyword">true</span>;
+    <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">vertex</span>);
+    
+    <span class="code-keyword">for</span> (<span class="code-class">int</span>[] <span class="code-variable">neighbor</span> : <span class="code-variable">adjacencyList</span>.<span class="code-function">get</span>(<span class="code-variable">vertex</span>)) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]]) {
+            <span class="code-function">dfs</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>], <span class="code-variable">visited</span>, <span class="code-variable">adjacencyList</span>, <span class="code-variable">visitOrder</span>);
+        }
+    }
+}`;
+            break;
+        case 'backtracking':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Backtracking: Encontrar mejor secuencia de visitas</span>
+<span class="code-comment"> * Complejidad: O(n!) optimizado con podas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">private</span> <span class="code-keyword">void</span> <span class="code-function">backtrack</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centers</span>,
+        <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Double</span>&gt;&gt; <span class="code-variable">costMatrix</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">secuenciaActual</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visitado</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">costoActual</span>, <span class="code-keyword">int</span> <span class="code-variable">distanciaActual</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">prioridadActual</span>, <span class="code-keyword">int</span> <span class="code-variable">presupuestoMaximo</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">distanciaMaxima</span>, <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">mejorSecuencia</span>,
+        <span class="code-keyword">int</span>[] <span class="code-variable">mejorPrioridad</span>, <span class="code-keyword">int</span>[] <span class="code-variable">mejorCosto</span>, <span class="code-keyword">int</span>[] <span class="code-variable">mejorDistancia</span>) {
+    <span class="code-comment">// Poda: si excede restricciones, no continuar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> > <span class="code-variable">presupuestoMaximo</span> || <span class="code-variable">distanciaActual</span> > <span class="code-variable">distanciaMaxima</span>) {
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Si es mejor solución, actualizar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">prioridadActual</span> > <span class="code-variable">mejorPrioridad</span>[<span class="code-number">0</span>]) {
+        <span class="code-variable">mejorSecuencia</span>.<span class="code-function">clear</span>();
+        <span class="code-variable">mejorSecuencia</span>.<span class="code-function">addAll</span>(<span class="code-variable">secuenciaActual</span>);
+        <span class="code-variable">mejorPrioridad</span>[<span class="code-number">0</span>] = <span class="code-variable">prioridadActual</span>;
+    }
+    
+    <span class="code-comment">// Probar cada centro no visitado</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">i</span> = <span class="code-number">0</span>; <span class="code-variable">i</span> < <span class="code-variable">centers</span>.<span class="code-function">size</span>(); <span class="code-variable">i</span>++) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visitado</span>[<span class="code-variable">i</span>]) {
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">true</span>;
+            <span class="code-variable">secuenciaActual</span>.<span class="code-function">add</span>(<span class="code-variable">centers</span>.<span class="code-function">get</span>(<span class="code-variable">i</span>).<span class="code-function">getId</span>());
+            <span class="code-comment">// Calcular nuevos costos y continuar recursivamente...</span>
+            <span class="code-function">backtrack</span>(<span class="code-variable">centers</span>, <span class="code-variable">costMatrix</span>, <span class="code-variable">secuenciaActual</span>, <span class="code-variable">visitado</span>,
+                <span class="code-variable">costoActual</span>, <span class="code-variable">distanciaActual</span>, <span class="code-variable">prioridadActual</span>,
+                <span class="code-variable">presupuestoMaximo</span>, <span class="code-variable">distanciaMaxima</span>, <span class="code-variable">mejorSecuencia</span>,
+                <span class="code-variable">mejorPrioridad</span>, <span class="code-variable">mejorCosto</span>, <span class="code-variable">mejorDistancia</span>);
+            <span class="code-comment">// Backtrack: deshacer cambios</span>
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">false</span>;
+            <span class="code-variable">secuenciaActual</span>.<span class="code-function">remove</span>(<span class="code-variable">secuenciaActual</span>.<span class="code-function">size</span>() - <span class="code-number">1</span>);
+        }
+    }
+}`;
+            break;
+        case 'branch-bound':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Branch & Bound: Ruta óptima tipo TSP</span>
+<span class="code-comment"> * Complejidad: O(n!) optimizado con podas agresivas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">private</span> <span class="code-keyword">void</span> <span class="code-function">branchAndBound</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centers</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">rutaActual</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visitado</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">costoActual</span>, <span class="code-keyword">int</span> <span class="code-variable">distanciaActual</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">prioridadActual</span>, <span class="code-keyword">int</span> <span class="code-variable">presupuestoMaximo</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">distanciaMaxima</span>, <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">mejorRuta</span>,
+        <span class="code-keyword">int</span>[] <span class="code-variable">mejorCosto</span>, <span class="code-keyword">int</span>[] <span class="code-variable">nodosExplorados</span>, <span class="code-keyword">int</span>[] <span class="code-variable">nodosPodados</span>) {
+    <span class="code-variable">nodosExplorados</span>[<span class="code-number">0</span>]++;
+    
+    <span class="code-comment">// Poda: si el costo actual ya es mayor que el mejor, no continuar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> >= <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>] || <span class="code-variable">costoActual</span> > <span class="code-variable">presupuestoMaximo</span> || 
+        <span class="code-variable">distanciaActual</span> > <span class="code-variable">distanciaMaxima</span>) {
+        <span class="code-variable">nodosPodados</span>[<span class="code-number">0</span>]++;
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Si visitamos todos los centros, actualizar mejor solución</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">rutaActual</span>.<span class="code-function">size</span>() == <span class="code-variable">centers</span>.<span class="code-function">size</span>()) {
+        <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> < <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>]) {
+            <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>] = <span class="code-variable">costoActual</span>;
+            <span class="code-variable">mejorRuta</span>.<span class="code-function">clear</span>();
+            <span class="code-variable">mejorRuta</span>.<span class="code-function">addAll</span>(<span class="code-variable">rutaActual</span>);
+        }
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Ramificar: probar cada centro no visitado</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">i</span> = <span class="code-number">0</span>; <span class="code-variable">i</span> < <span class="code-variable">centers</span>.<span class="code-function">size</span>(); <span class="code-variable">i</span>++) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visitado</span>[<span class="code-variable">i</span>]) {
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">true</span>;
+            <span class="code-variable">rutaActual</span>.<span class="code-function">add</span>(<span class="code-variable">centers</span>.<span class="code-function">get</span>(<span class="code-variable">i</span>).<span class="code-function">getId</span>());
+            <span class="code-comment">// Calcular nuevos costos y continuar...</span>
+            <span class="code-function">branchAndBound</span>(<span class="code-variable">centers</span>, <span class="code-variable">rutaActual</span>, <span class="code-variable">visitado</span>,
+                <span class="code-variable">costoActual</span>, <span class="code-variable">distanciaActual</span>, <span class="code-variable">prioridadActual</span>,
+                <span class="code-variable">presupuestoMaximo</span>, <span class="code-variable">distanciaMaxima</span>, <span class="code-variable">mejorRuta</span>,
+                <span class="code-variable">mejorCosto</span>, <span class="code-variable">nodosExplorados</span>, <span class="code-variable">nodosPodados</span>);
+            <span class="code-comment">// Backtrack</span>
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">false</span>;
+            <span class="code-variable">rutaActual</span>.<span class="code-function">remove</span>(<span class="code-variable">rutaActual</span>.<span class="code-function">size</span>() - <span class="code-number">1</span>);
+        }
+    }
+}`;
+            break;
+        default:
+            codeContent = '<span class="code-comment">// Código no disponible</span>';
+    }
+    
+    return `
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    <div class="modal-code-section">
+                        <div class="modal-code-title">
+                            <i class="fas fa-code"></i> Implementación del Algoritmo
+                        </div>
+                        <div class="modal-code-content">
+                            <p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 1.05rem;">
+                                Este es el código Java que implementa el algoritmo:
+                            </p>
+                            
+                            <div class="code-block-container">
+                                <div class="code-block-header">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fab fa-java" style="color: #f89820; font-size: 1.2rem;"></i>
+                                        <span class="code-block-language">Java</span>
+                                    </div>
+                                    <button class="code-copy-btn" onclick="copyCodeToClipboard(this)" title="Copiar código">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <pre class="code-block java-syntax"><code>${codeContent}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    `;
+}
+
+// Función para obtener el contenido de código para la pestaña
+function getCodeTabContent(algorithmType) {
+    let codeContent = '';
+    
+    switch(algorithmType) {
+        case 'bfs':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * BFS: Breadth-First Search - Exploración por niveles</span>
+<span class="code-comment"> * Complejidad: O(V + E) donde V = vértices, E = aristas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Object</span>&gt; <span class="code-function">bfs</span>(<span class="code-keyword">int</span> <span class="code-variable">vertices</span>, <span class="code-keyword">int</span> <span class="code-variable">source</span>, 
+        <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">List</span>&lt;<span class="code-class">int</span>[]&gt;&gt; <span class="code-variable">adjacencyList</span>) {
+    <span class="code-class">Queue</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">queue</span> = <span class="code-keyword">new</span> <span class="code-class">LinkedList</span>&lt;&gt;();
+    <span class="code-keyword">boolean</span>[] <span class="code-variable">visited</span> = <span class="code-keyword">new</span> <span class="code-keyword">boolean</span>[<span class="code-variable">vertices</span>];
+    <span class="code-keyword">int</span>[] <span class="code-variable">distances</span> = <span class="code-keyword">new</span> <span class="code-keyword">int</span>[<span class="code-variable">vertices</span>];
+    <span class="code-class">List</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">visitOrder</span> = <span class="code-keyword">new</span> <span class="code-class">ArrayList</span>&lt;&gt;();
+    
+    <span class="code-class">Arrays</span>.<span class="code-function">fill</span>(<span class="code-variable">distances</span>, -<span class="code-number">1</span>);
+    <span class="code-variable">queue</span>.<span class="code-function">offer</span>(<span class="code-variable">source</span>);
+    <span class="code-variable">visited</span>[<span class="code-variable">source</span>] = <span class="code-keyword">true</span>;
+    <span class="code-variable">distances</span>[<span class="code-variable">source</span>] = <span class="code-number">0</span>;
+    <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">source</span>);
+    
+    <span class="code-keyword">while</span> (!<span class="code-variable">queue</span>.<span class="code-function">isEmpty</span>()) {
+        <span class="code-keyword">int</span> <span class="code-variable">current</span> = <span class="code-variable">queue</span>.<span class="code-function">poll</span>();
+        <span class="code-keyword">for</span> (<span class="code-class">int</span>[] <span class="code-variable">neighbor</span> : <span class="code-variable">adjacencyList</span>.<span class="code-function">get</span>(<span class="code-variable">current</span>)) {
+            <span class="code-keyword">if</span> (!<span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]]) {
+                <span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]] = <span class="code-keyword">true</span>;
+                <span class="code-variable">distances</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]] = <span class="code-variable">distances</span>[<span class="code-variable">current</span>] + <span class="code-number">1</span>;
+                <span class="code-variable">queue</span>.<span class="code-function">offer</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]);
+                <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]);
+            }
+        }
+    }
+    <span class="code-comment">// Retornar resultados...</span>
+}`;
+            break;
+        case 'dfs':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * DFS: Depth-First Search - Exploración en profundidad</span>
+<span class="code-comment"> * Complejidad: O(V + E) donde V = vértices, E = aristas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">public</span> <span class="code-keyword">void</span> <span class="code-function">dfs</span>(<span class="code-keyword">int</span> <span class="code-variable">vertex</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visited</span>, 
+        <span class="code-class">Map</span>&lt;<span class="code-class">Integer</span>, <span class="code-class">List</span>&lt;<span class="code-class">int</span>[]&gt;&gt; <span class="code-variable">adjacencyList</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">Integer</span>&gt; <span class="code-variable">visitOrder</span>) {
+    <span class="code-variable">visited</span>[<span class="code-variable">vertex</span>] = <span class="code-keyword">true</span>;
+    <span class="code-variable">visitOrder</span>.<span class="code-function">add</span>(<span class="code-variable">vertex</span>);
+    
+    <span class="code-keyword">for</span> (<span class="code-class">int</span>[] <span class="code-variable">neighbor</span> : <span class="code-variable">adjacencyList</span>.<span class="code-function">get</span>(<span class="code-variable">vertex</span>)) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visited</span>[<span class="code-variable">neighbor</span>[<span class="code-number">0</span>]]) {
+            <span class="code-function">dfs</span>(<span class="code-variable">neighbor</span>[<span class="code-number">0</span>], <span class="code-variable">visited</span>, <span class="code-variable">adjacencyList</span>, <span class="code-variable">visitOrder</span>);
+        }
+    }
+}`;
+            break;
+        case 'backtracking':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Backtracking: Encontrar mejor secuencia de visitas</span>
+<span class="code-comment"> * Complejidad: O(n!) optimizado con podas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">private</span> <span class="code-keyword">void</span> <span class="code-function">backtrack</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centers</span>,
+        <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Map</span>&lt;<span class="code-class">String</span>, <span class="code-class">Double</span>&gt;&gt; <span class="code-variable">costMatrix</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">secuenciaActual</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visitado</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">costoActual</span>, <span class="code-keyword">int</span> <span class="code-variable">distanciaActual</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">prioridadActual</span>, <span class="code-keyword">int</span> <span class="code-variable">presupuestoMaximo</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">distanciaMaxima</span>, <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">mejorSecuencia</span>,
+        <span class="code-keyword">int</span>[] <span class="code-variable">mejorPrioridad</span>, <span class="code-keyword">int</span>[] <span class="code-variable">mejorCosto</span>, <span class="code-keyword">int</span>[] <span class="code-variable">mejorDistancia</span>) {
+    <span class="code-comment">// Poda: si excede restricciones, no continuar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> > <span class="code-variable">presupuestoMaximo</span> || <span class="code-variable">distanciaActual</span> > <span class="code-variable">distanciaMaxima</span>) {
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Si es mejor solución, actualizar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">prioridadActual</span> > <span class="code-variable">mejorPrioridad</span>[<span class="code-number">0</span>]) {
+        <span class="code-variable">mejorSecuencia</span>.<span class="code-function">clear</span>();
+        <span class="code-variable">mejorSecuencia</span>.<span class="code-function">addAll</span>(<span class="code-variable">secuenciaActual</span>);
+        <span class="code-variable">mejorPrioridad</span>[<span class="code-number">0</span>] = <span class="code-variable">prioridadActual</span>;
+    }
+    
+    <span class="code-comment">// Probar cada centro no visitado</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">i</span> = <span class="code-number">0</span>; <span class="code-variable">i</span> < <span class="code-variable">centers</span>.<span class="code-function">size</span>(); <span class="code-variable">i</span>++) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visitado</span>[<span class="code-variable">i</span>]) {
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">true</span>;
+            <span class="code-variable">secuenciaActual</span>.<span class="code-function">add</span>(<span class="code-variable">centers</span>.<span class="code-function">get</span>(<span class="code-variable">i</span>).<span class="code-function">getId</span>());
+            <span class="code-comment">// Calcular nuevos costos y continuar recursivamente...</span>
+            <span class="code-function">backtrack</span>(<span class="code-variable">centers</span>, <span class="code-variable">costMatrix</span>, <span class="code-variable">secuenciaActual</span>, <span class="code-variable">visitado</span>,
+                <span class="code-variable">costoActual</span>, <span class="code-variable">distanciaActual</span>, <span class="code-variable">prioridadActual</span>,
+                <span class="code-variable">presupuestoMaximo</span>, <span class="code-variable">distanciaMaxima</span>, <span class="code-variable">mejorSecuencia</span>,
+                <span class="code-variable">mejorPrioridad</span>, <span class="code-variable">mejorCosto</span>, <span class="code-variable">mejorDistancia</span>);
+            <span class="code-comment">// Backtrack: deshacer cambios</span>
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">false</span>;
+            <span class="code-variable">secuenciaActual</span>.<span class="code-function">remove</span>(<span class="code-variable">secuenciaActual</span>.<span class="code-function">size</span>() - <span class="code-number">1</span>);
+        }
+    }
+}`;
+            break;
+        case 'branch-bound':
+            codeContent = `<span class="code-comment">/**</span>
+<span class="code-comment"> * Branch & Bound: Ruta óptima tipo TSP</span>
+<span class="code-comment"> * Complejidad: O(n!) optimizado con podas agresivas</span>
+<span class="code-comment"> */</span>
+<span class="code-keyword">private</span> <span class="code-keyword">void</span> <span class="code-function">branchAndBound</span>(<span class="code-class">List</span>&lt;<span class="code-class">DistributionCenter</span>&gt; <span class="code-variable">centers</span>,
+        <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">rutaActual</span>, <span class="code-keyword">boolean</span>[] <span class="code-variable">visitado</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">costoActual</span>, <span class="code-keyword">int</span> <span class="code-variable">distanciaActual</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">prioridadActual</span>, <span class="code-keyword">int</span> <span class="code-variable">presupuestoMaximo</span>,
+        <span class="code-keyword">int</span> <span class="code-variable">distanciaMaxima</span>, <span class="code-class">List</span>&lt;<span class="code-class">String</span>&gt; <span class="code-variable">mejorRuta</span>,
+        <span class="code-keyword">int</span>[] <span class="code-variable">mejorCosto</span>, <span class="code-keyword">int</span>[] <span class="code-variable">nodosExplorados</span>, <span class="code-keyword">int</span>[] <span class="code-variable">nodosPodados</span>) {
+    <span class="code-variable">nodosExplorados</span>[<span class="code-number">0</span>]++;
+    
+    <span class="code-comment">// Poda: si el costo actual ya es mayor que el mejor, no continuar</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> >= <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>] || <span class="code-variable">costoActual</span> > <span class="code-variable">presupuestoMaximo</span> || 
+        <span class="code-variable">distanciaActual</span> > <span class="code-variable">distanciaMaxima</span>) {
+        <span class="code-variable">nodosPodados</span>[<span class="code-number">0</span>]++;
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Si visitamos todos los centros, actualizar mejor solución</span>
+    <span class="code-keyword">if</span> (<span class="code-variable">rutaActual</span>.<span class="code-function">size</span>() == <span class="code-variable">centers</span>.<span class="code-function">size</span>()) {
+        <span class="code-keyword">if</span> (<span class="code-variable">costoActual</span> < <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>]) {
+            <span class="code-variable">mejorCosto</span>[<span class="code-number">0</span>] = <span class="code-variable">costoActual</span>;
+            <span class="code-variable">mejorRuta</span>.<span class="code-function">clear</span>();
+            <span class="code-variable">mejorRuta</span>.<span class="code-function">addAll</span>(<span class="code-variable">rutaActual</span>);
+        }
+        <span class="code-keyword">return</span>;
+    }
+    
+    <span class="code-comment">// Ramificar: probar cada centro no visitado</span>
+    <span class="code-keyword">for</span> (<span class="code-keyword">int</span> <span class="code-variable">i</span> = <span class="code-number">0</span>; <span class="code-variable">i</span> < <span class="code-variable">centers</span>.<span class="code-function">size</span>(); <span class="code-variable">i</span>++) {
+        <span class="code-keyword">if</span> (!<span class="code-variable">visitado</span>[<span class="code-variable">i</span>]) {
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">true</span>;
+            <span class="code-variable">rutaActual</span>.<span class="code-function">add</span>(<span class="code-variable">centers</span>.<span class="code-function">get</span>(<span class="code-variable">i</span>).<span class="code-function">getId</span>());
+            <span class="code-comment">// Calcular nuevos costos y continuar...</span>
+            <span class="code-function">branchAndBound</span>(<span class="code-variable">centers</span>, <span class="code-variable">rutaActual</span>, <span class="code-variable">visitado</span>,
+                <span class="code-variable">costoActual</span>, <span class="code-variable">distanciaActual</span>, <span class="code-variable">prioridadActual</span>,
+                <span class="code-variable">presupuestoMaximo</span>, <span class="code-variable">distanciaMaxima</span>, <span class="code-variable">mejorRuta</span>,
+                <span class="code-variable">mejorCosto</span>, <span class="code-variable">nodosExplorados</span>, <span class="code-variable">nodosPodados</span>);
+            <span class="code-comment">// Backtrack</span>
+            <span class="code-variable">visitado</span>[<span class="code-variable">i</span>] = <span class="code-keyword">false</span>;
+            <span class="code-variable">rutaActual</span>.<span class="code-function">remove</span>(<span class="code-variable">rutaActual</span>.<span class="code-function">size</span>() - <span class="code-number">1</span>);
+        }
+    }
+}`;
+            break;
+        default:
+            codeContent = '<span class="code-comment">// Código no disponible</span>';
+    }
+    
+    return `
+                    <div class="modal-code-section">
+                        <div class="modal-code-title">
+                            <i class="fas fa-code"></i> Implementación del Algoritmo
+                        </div>
+                        <div class="modal-code-content">
+                            <p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 1.05rem;">
+                                Este es el código Java que implementa el algoritmo:
+                            </p>
+                            
+                            <div class="code-block-container">
+                                <div class="code-block-header">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fab fa-java" style="color: #f89820; font-size: 1.2rem;"></i>
+                                        <span class="code-block-language">Java</span>
+                                    </div>
+                                    <button class="code-copy-btn" onclick="copyCodeToClipboard(this)" title="Copiar código">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <pre class="code-block java-syntax"><code>${codeContent}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+    `;
+}
+
+// Función para copiar código al portapapeles
+function copyCodeToClipboard(button) {
+    const codeBlock = button.closest('.code-block-container').querySelector('.code-block code');
+    const codeText = codeBlock.textContent;
+    
+    navigator.clipboard.writeText(codeText).then(() => {
+        // Cambiar temporalmente el botón para mostrar confirmación
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copiado';
+        button.style.background = 'var(--success-color)';
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.style.background = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        alert('Error al copiar el código');
+    });
+}
+
+// ==================== FUNCIONES DE FORMATEO PARA NUEVOS MÓDULOS ====================
+
+// Formatear resultado de BFS
+function formatBFSResultModal(data) {
+    const visitOrder = data.visitOrder || [];
+    const distances = data.distances || {};
+    const reachableVertices = data.reachableVertices || visitOrder.length;
+    
+    const tabsId = `tabs-bfs-${Date.now()}`;
+    
+    let stepsHtml = '';
+    visitOrder.forEach((vertex, index) => {
+        const distance = distances[vertex] !== undefined ? distances[vertex] : 'N/A';
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Nivel ${index === 0 ? '0' : Math.floor(index / 2)}: Visitar vértice ${vertex}</div>
+                    <div class="modal-step-description">
+                        Explorando desde el origen, encontramos este vértice a distancia ${distance} del origen.
+                    </div>
+                    <div class="modal-step-result">
+                        Vértice: ${vertex} | Distancia desde origen: ${distance}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${reachableVertices}</div>
+                        <div class="modal-highlight-label">Centros Alcanzables</div>
+                        <div class="modal-highlight-subtitle">desde el origen</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-search"></i></div>
+                            <div class="modal-stat-label">Algoritmo</div>
+                            <div class="modal-stat-value">${data.algoritmo || 'BFS'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="modal-stat-label">Complejidad</div>
+                            <div class="modal-stat-value">${data.complejidad || 'O(V + E)'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="modal-stat-label">Tiempo</div>
+                            <div class="modal-stat-value">${formatExecutionTime(data.tiempoEjecucionNanosegundos || 0)}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="modal-stat-label">Origen</div>
+                            <div class="modal-stat-value">${data.sourceCenterId || data.source || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    ${data.fuente === 'neo4j-selected' ? `
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <i class="fas fa-database" style="color: #3b82f6;"></i>
+                            <strong>Datos utilizados:</strong>
+                        </div>
+                        ${data.centrosSeleccionados ? `<div style="font-size: 0.9rem; color: var(--text-secondary);">Centros: ${data.centrosSeleccionados}</div>` : ''}
+                        ${data.rutasSeleccionadas ? `<div style="font-size: 0.9rem; color: var(--text-secondary);">Rutas: ${data.rutasSeleccionadas}</div>` : ''}
+                    </div>` : ''}
+                </div>
+                
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-steps"></i> Exploración Paso a Paso
+                        </div>
+                        ${stepsHtml || '<p>No hay pasos disponibles</p>'}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona BFS?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> BFS (Breadth-First Search) explora la red <strong>nivel por nivel</strong>, como ondas en el agua.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📍 <strong>Origen:</strong> Empezamos desde ${data.sourceCenterId || 'el centro seleccionado'}</li>
+                                <li>🌊 <strong>Nivel 0:</strong> Visitamos el origen (distancia 0)</li>
+                                <li>🌊 <strong>Nivel 1:</strong> Visitamos todos los centros directamente conectados (distancia 1)</li>
+                                <li>🌊 <strong>Nivel 2:</strong> Visitamos los centros conectados a los del nivel 1 (distancia 2)</li>
+                                <li>🔄 <strong>Continúa:</strong> Hasta que no haya más centros alcanzables</li>
+                                <li>✅ <strong>Resultado:</strong> Encontramos ${reachableVertices} centros alcanzables desde el origen</li>
+                            </ol>
+                            
+                            <p><strong>Ventajas de BFS:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>✅ Encuentra el camino más corto (en número de saltos)</li>
+                                <li>✅ Explora todos los niveles antes de profundizar</li>
+                                <li>✅ Ideal para encontrar rutas alternativas en emergencias</li>
+                            </ul>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(V + E)</code> donde V = vértices, E = aristas. Cada vértice y arista se visita exactamente una vez.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    ${getCodeTabContent('bfs')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Formatear resultado de DFS
+function formatDFSResultModal(data) {
+    const visitOrder = data.visitOrder || [];
+    const allPaths = data.allPaths || [];
+    const totalPaths = data.totalPaths || allPaths.length;
+    
+    const tabsId = `tabs-dfs-${Date.now()}`;
+    
+    let stepsHtml = '';
+    visitOrder.forEach((vertex, index) => {
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Explorar vértice ${vertex}</div>
+                    <div class="modal-step-description">
+                        Explorando en profundidad, visitamos este vértice y continuamos hacia sus vecinos.
+                    </div>
+                    <div class="modal-step-result">
+                        Vértice visitado: ${vertex}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Proceso
+                </button>
+                <button class="modal-tab-btn" data-tab="caminos">
+                    <i class="fas fa-route"></i> Caminos
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${totalPaths}</div>
+                        <div class="modal-highlight-label">Caminos Encontrados</div>
+                        <div class="modal-highlight-subtitle">exploración en profundidad</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-sitemap"></i></div>
+                            <div class="modal-stat-label">Algoritmo</div>
+                            <div class="modal-stat-value">${data.algoritmo || 'DFS'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="modal-stat-label">Complejidad</div>
+                            <div class="modal-stat-value">${data.complejidad || 'O(V + E)'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="modal-stat-label">Tiempo</div>
+                            <div class="modal-stat-value">${formatExecutionTime(data.tiempoEjecucionNanosegundos || 0)}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-list"></i></div>
+                            <div class="modal-stat-label">Vértices Visitados</div>
+                            <div class="modal-stat-value">${visitOrder.length}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Proceso -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-steps"></i> Exploración Paso a Paso
+                        </div>
+                        ${stepsHtml || '<p>No hay pasos disponibles</p>'}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Caminos -->
+                <div class="modal-tab-pane" data-tab-content="caminos">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-route"></i> Todos los Caminos Encontrados
+                        </div>
+                        ${allPaths.slice(0, 20).map((path, index) => `
+                            <div class="modal-step">
+                                <div class="modal-step-number">${index + 1}</div>
+                                <div class="modal-step-content">
+                                    <div class="modal-step-title">Camino ${index + 1}</div>
+                                    <div class="modal-step-description">
+                                        ${path.join(' → ')}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${allPaths.length > 20 ? `<p style="text-align: center; color: var(--text-secondary); margin-top: 1rem;">... y ${allPaths.length - 20} caminos más</p>` : ''}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona DFS?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> DFS (Depth-First Search) explora la red <strong>en profundidad</strong>, como un laberinto.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📍 <strong>Origen:</strong> Empezamos desde ${data.sourceCenterId || 'el centro seleccionado'}</li>
+                                <li>🔽 <strong>Profundizar:</strong> Visitamos un vértice y seguimos por su primer vecino</li>
+                                <li>🔽 <strong>Continuar:</strong> Seguimos profundizando hasta llegar a un "callejón sin salida"</li>
+                                <li>↩️ <strong>Backtrack:</strong> Volvemos atrás y exploramos el siguiente vecino</li>
+                                <li>🔄 <strong>Repetir:</strong> Hasta explorar todos los caminos posibles</li>
+                                <li>✅ <strong>Resultado:</strong> Encontramos ${totalPaths} caminos únicos desde el origen</li>
+                            </ol>
+                            
+                            <p><strong>Ventajas de DFS:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>✅ Encuentra todos los caminos posibles</li>
+                                <li>✅ Detecta ciclos en la red</li>
+                                <li>✅ Útil para descubrir conexiones ocultas</li>
+                            </ul>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(V + E)</code> donde V = vértices, E = aristas.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    ${getCodeTabContent('dfs')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Formatear resultado de BFS All Paths
+function formatBFSPathsResultModal(data) {
+    const allPaths = data.allPaths || [];
+    const totalPaths = data.totalPaths || allPaths.length;
+    
+    const tabsId = `tabs-bfs-paths-${Date.now()}`;
+    
+    return `
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="caminos">
+                    <i class="fas fa-route"></i> Todos los Caminos
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${totalPaths}</div>
+                        <div class="modal-highlight-label">Rutas Alternativas</div>
+                        <div class="modal-highlight-subtitle">entre origen y destino</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="modal-stat-label">Origen</div>
+                            <div class="modal-stat-value">${data.sourceCenterId || data.source || 'N/A'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-flag-checkered"></i></div>
+                            <div class="modal-stat-label">Destino</div>
+                            <div class="modal-stat-value">${data.destCenterId || data.destination || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Caminos -->
+                <div class="modal-tab-pane" data-tab-content="caminos">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-route"></i> Todas las Rutas Encontradas
+                        </div>
+                        ${allPaths.slice(0, 30).map((path, index) => `
+                            <div class="modal-step">
+                                <div class="modal-step-number">${index + 1}</div>
+                                <div class="modal-step-content">
+                                    <div class="modal-step-title">Ruta Alternativa ${index + 1}</div>
+                                    <div class="modal-step-description">
+                                        ${path.join(' → ')}
+                                    </div>
+                                    <div class="modal-step-result">
+                                        Longitud: ${path.length} vértices
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${allPaths.length > 30 ? `<p style="text-align: center; color: var(--text-secondary); margin-top: 1rem;">... y ${allPaths.length - 30} rutas más</p>` : ''}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Por qué Encontrar Todos los Caminos?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Propósito:</strong> Encontrar <strong>todas las rutas alternativas</strong> entre dos puntos es esencial para planificación de contingencias.</p>
+                            
+                            <p><strong>Casos de uso:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>🚧 <strong>Ruta bloqueada:</strong> Si la ruta principal está cerrada, tienes ${totalPaths} alternativas</li>
+                                <li>⛽ <strong>Optimización de combustible:</strong> Compara rutas para elegir la más eficiente</li>
+                                <li>⏱️ <strong>Planificación de tiempo:</strong> Evalúa rutas según tiempo estimado</li>
+                                <li>🔄 <strong>Distribución de carga:</strong> Divide el tráfico entre múltiples rutas</li>
+                            </ul>
+                            
+                            <p><strong>Resultado:</strong> Se encontraron ${totalPaths} rutas diferentes desde ${data.sourceCenterId || 'origen'} hasta ${data.destCenterId || 'destino'}.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Formatear resultado de Backtracking
+function formatBacktrackingResultModal(data) {
+    const secuencia = data.secuencia || [];
+    const tabsId = `tabs-backtracking-${Date.now()}`;
+    
+    let stepsHtml = '';
+    secuencia.forEach((centro, index) => {
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Visitar ${centro}</div>
+                    <div class="modal-step-description">
+                        El algoritmo seleccionó este centro como parte de la secuencia óptima.
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Secuencia
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">${secuencia.length}</div>
+                        <div class="modal-highlight-label">Centros en Secuencia</div>
+                        <div class="modal-highlight-subtitle">orden óptimo</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                            <div class="modal-stat-label">Costo Total</div>
+                            <div class="modal-stat-value">$${data.costoTotal || 0}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
+                            <div class="modal-stat-label">Distancia Total</div>
+                            <div class="modal-stat-value">${data.distanciaTotal || 0} km</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-flag"></i></div>
+                            <div class="modal-stat-label">Prioridad Total</div>
+                            <div class="modal-stat-value">${data.prioridadTotal || 0}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas ${data.cumpleRestricciones ? 'fa-check-circle' : 'fa-times-circle'}"></i></div>
+                            <div class="modal-stat-label">Factible</div>
+                            <div class="modal-stat-value">${data.cumpleRestricciones ? 'Sí' : 'No'}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: ${data.cumpleRestricciones ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; padding: 1rem; border-left: 4px solid ${data.cumpleRestricciones ? '#22c55e' : '#ef4444'}; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <i class="fas ${data.cumpleRestricciones ? 'fa-check-circle' : 'fa-exclamation-triangle'}" style="color: ${data.cumpleRestricciones ? '#22c55e' : '#ef4444'};"></i>
+                            <strong>Restricciones:</strong>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                            Presupuesto: $${data.presupuestoUtilizado || 0} / $${data.presupuestoMaximo || 0} 
+                            ${data.presupuestoUtilizado <= data.presupuestoMaximo ? '✅' : '❌'}
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                            Distancia: ${data.distanciaUtilizada || 0} / ${data.distanciaMaxima || 0} km
+                            ${data.distanciaUtilizada <= data.distanciaMaxima ? '✅' : '❌'}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Secuencia -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-list-ol"></i> Secuencia Óptima de Visitas
+                        </div>
+                        ${stepsHtml || '<p>No hay secuencia disponible</p>'}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona Backtracking?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> Backtracking prueba <strong>todas las combinaciones posibles</strong> y "vuelve atrás" cuando una opción no funciona.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>🎯 <strong>Objetivo:</strong> Maximizar prioridad total visitando ${secuencia.length} centros</li>
+                                <li>🔍 <strong>Exploración:</strong> Prueba todas las combinaciones posibles</li>
+                                <li>✂️ <strong>Poda:</strong> Elimina rutas que exceden presupuesto o distancia</li>
+                                <li>↩️ <strong>Backtrack:</strong> Si una ruta no funciona, vuelve atrás y prueba otra</li>
+                                <li>✅ <strong>Resultado:</strong> Encuentra la secuencia que maximiza prioridad (${data.prioridadTotal || 0}) respetando restricciones</li>
+                            </ol>
+                            
+                            <p><strong>Ventajas:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>✅ Garantiza encontrar la solución óptima</li>
+                                <li>✅ Respeta todas las restricciones</li>
+                                <li>✅ Optimizado con podas para mejorar rendimiento</li>
+                            </ul>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(n!)</code> optimizado con podas, donde n = número de centros.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    ${getCodeTabContent('backtracking')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Formatear resultado de Branch & Bound
+function formatBranchBoundResultModal(data) {
+    const rutaOptima = data.rutaOptima || [];
+    const centersMap = data.centersMap || {};
+    const tabsId = `tabs-branch-bound-${Date.now()}`;
+    
+    // Crear array de nombres de centros para la simulación
+    const nombresCentros = rutaOptima.map(id => centersMap[id] || id);
+    
+    let stepsHtml = '';
+    rutaOptima.forEach((centro, index) => {
+        const nombreCentro = centersMap[centro] || centro;
+        stepsHtml += `
+            <div class="modal-step">
+                <div class="modal-step-number">${index + 1}</div>
+                <div class="modal-step-content">
+                    <div class="modal-step-title">Paso ${index + 1}: Visitar ${nombreCentro}</div>
+                    <div class="modal-step-description">
+                        ${index === 0 ? 'Punto de inicio de la ruta óptima' : index === rutaOptima.length - 1 ? 'Punto final de la ruta' : 'Siguiente parada en la ruta óptima'}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="modal-tabs-container" id="${tabsId}">
+            <div class="modal-tabs-header">
+                <button class="modal-tab-btn active" data-tab="resumen">
+                    <i class="fas fa-chart-line"></i> Resumen
+                </button>
+                <button class="modal-tab-btn" data-tab="proceso">
+                    <i class="fas fa-steps"></i> Ruta
+                </button>
+                <button class="modal-tab-btn" data-tab="simulacion">
+                    <i class="fas fa-play-circle"></i> Simulación
+                </button>
+                <button class="modal-tab-btn" data-tab="explicacion">
+                    <i class="fas fa-lightbulb"></i> Explicación
+                </button>
+                <button class="modal-tab-btn" data-tab="codigo">
+                    <i class="fas fa-code"></i> Código
+                </button>
+            </div>
+            
+            <div class="modal-tabs-content">
+                <!-- Pestaña: Resumen -->
+                <div class="modal-tab-pane active" data-tab-content="resumen">
+                    <div class="modal-highlight-box">
+                        <div class="modal-highlight-value">$${data.costoTotal || 0}</div>
+                        <div class="modal-highlight-label">Costo Total</div>
+                        <div class="modal-highlight-subtitle">ruta óptima</div>
+                    </div>
+                    
+                    <div class="modal-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 2rem;">
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
+                            <div class="modal-stat-label">Paradas</div>
+                            <div class="modal-stat-value">${rutaOptima.length}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-route"></i></div>
+                            <div class="modal-stat-label">Distancia Total</div>
+                            <div class="modal-stat-value">${data.distanciaTotal || 0} km</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-flag"></i></div>
+                            <div class="modal-stat-label">Prioridad Total</div>
+                            <div class="modal-stat-value">${data.prioridadTotal || 0}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas ${data.factible ? 'fa-check-circle' : 'fa-times-circle'}"></i></div>
+                            <div class="modal-stat-label">Factible</div>
+                            <div class="modal-stat-value">${data.factible ? 'Sí' : 'No'}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-sitemap"></i></div>
+                            <div class="modal-stat-label">Nodos Explorados</div>
+                            <div class="modal-stat-value">${data.nodosExplorados || 0}</div>
+                        </div>
+                        <div class="modal-stat-card">
+                            <div class="modal-stat-icon"><i class="fas fa-cut"></i></div>
+                            <div class="modal-stat-label">Nodos Podados</div>
+                            <div class="modal-stat-value">${data.nodosPodados || 0}</div>
+                        </div>
+                    </div>
+                    
+                    ${data.eficienciaPoda ? `
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 8px; margin-top: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
+                            <strong>Eficiencia de Poda:</strong> ${data.eficienciaPoda.toFixed(1)}%
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                            El algoritmo podó ${data.nodosPodados || 0} de ${(data.nodosExplorados || 0) + (data.nodosPodados || 0)} nodos posibles, 
+                            evitando explorar ${data.eficienciaPoda.toFixed(1)}% del espacio de búsqueda.
+                        </div>
+                    </div>` : ''}
+                </div>
+                
+                <!-- Pestaña: Ruta -->
+                <div class="modal-tab-pane" data-tab-content="proceso">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-route"></i> Ruta Óptima Completa
+                        </div>
+                        ${stepsHtml || '<p>No hay ruta disponible</p>'}
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Simulación -->
+                <div class="modal-tab-pane" data-tab-content="simulacion">
+                    <div class="modal-steps-section">
+                        <div class="modal-steps-title">
+                            <i class="fas fa-play-circle"></i> Simulación del Proceso Branch & Bound
+                        </div>
+                        
+                        <div style="background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; color: var(--text-primary);">
+                                    <i class="fas fa-sitemap"></i> Exploración del Árbol de Búsqueda
+                                </h4>
+                                <button id="btn-iniciar-simulacion-${tabsId}" class="btn btn-primary" onclick="iniciarSimulacionBranchBound('${tabsId}', ${data.nodosExplorados || 0}, ${data.nodosPodados || 0}, ${data.numeroCentros || rutaOptima.length}, ${data.costoTotal || 0}, '${JSON.stringify(nombresCentros).replace(/'/g, "\\'")}', '${JSON.stringify(centersMap).replace(/'/g, "\\'")}')" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                    <i class="fas fa-play"></i> Iniciar Simulación
+                                </button>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="background: rgba(34, 197, 94, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #22c55e;">
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Nodos Explorados</div>
+                                    <div id="sim-nodos-explorados-${tabsId}" style="font-size: 1.5rem; font-weight: bold; color: #22c55e;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">de ${data.nodosExplorados || 0}</div>
+                                </div>
+                                <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ef4444;">
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Nodos Podados</div>
+                                    <div id="sim-nodos-podados-${tabsId}" style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">de ${data.nodosPodados || 0}</div>
+                                </div>
+                                <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Mejor Costo</div>
+                                    <div id="sim-mejor-costo-${tabsId}" style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;">∞</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Actual: $${data.costoTotal || 0}</div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div style="background: var(--dark-bg); padding: 1rem; border-radius: 8px; min-height: 300px; position: relative; overflow: hidden;">
+                                    <div id="sim-arbol-${tabsId}" style="width: 100%; height: 100%; min-height: 300px;">
+                                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                            <i class="fas fa-play-circle" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                            <p>Haz clic en "Iniciar Simulación" para ver cómo el algoritmo explora el árbol de búsqueda</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: var(--dark-bg); padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto;">
+                                    <h5 style="margin: 0 0 1rem 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-list"></i> Historial de Nodos
+                                    </h5>
+                                    <div id="sim-historial-${tabsId}" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                            <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                                            <p style="margin: 0; font-size: 0.9rem;">Los nodos aparecerán aquí durante la simulación</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 1rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 4px solid #fbbf24; border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-info-circle" style="color: #fbbf24;"></i>
+                                    <strong>¿Cómo funciona la simulación?</strong>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+                                    <p style="margin: 0 0 0.5rem 0;">La simulación muestra cómo Branch & Bound explora el árbol de búsqueda:</p>
+                                    <ul style="margin: 0; padding-left: 1.5rem;">
+                                        <li><strong style="color: #22c55e;">Nodos Explorados (verde):</strong> Rutas que el algoritmo evaluó completamente</li>
+                                        <li><strong style="color: #ef4444;">Nodos Podados (rojo):</strong> Rutas descartadas por exceder restricciones o ser peores que la mejor solución</li>
+                                        <li><strong style="color: #3b82f6;">Mejor Costo (azul):</strong> El costo de la mejor ruta encontrada hasta el momento</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Explicación -->
+                <div class="modal-tab-pane" data-tab-content="explicacion">
+                    <div class="modal-explanation">
+                        <div class="modal-explanation-title">
+                            <i class="fas fa-lightbulb"></i> ¿Cómo Funciona Branch & Bound?
+                        </div>
+                        <div class="modal-explanation-text">
+                            <p><strong>Estrategia:</strong> Branch & Bound resuelve el problema del "vendedor viajero" (TSP) con restricciones reales.</p>
+                            
+                            <p><strong>Con tus datos:</strong></p>
+                            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>🌳 <strong>Ramificación:</strong> Explora todas las rutas posibles visitando ${rutaOptima.length} centros</li>
+                                <li>✂️ <strong>Poda:</strong> Elimina rutas que no pueden ser mejores que la mejor encontrada</li>
+                                <li>📊 <strong>Eficiencia:</strong> Podó ${data.eficienciaPoda ? data.eficienciaPoda.toFixed(1) : 0}% del espacio de búsqueda</li>
+                                <li>🎯 <strong>Optimización:</strong> Encuentra la ruta que minimiza costo ($${data.costoTotal || 0})</li>
+                                <li>✅ <strong>Resultado:</strong> Ruta óptima que visita todos los centros respetando restricciones</li>
+                            </ol>
+                            
+                            <p><strong>Ventajas:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>✅ Garantiza la solución óptima (no aproximada)</li>
+                                <li>✅ Eficiente gracias a las podas agresivas</li>
+                                <li>✅ Considera restricciones reales (presupuesto, distancia)</li>
+                            </ul>
+                            
+                            <p><strong>Complejidad:</strong> <code>O(n!)</code> optimizado con podas agresivas, donde n = número de centros.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña: Código -->
+                <div class="modal-tab-pane" data-tab-content="codigo">
+                    ${getCodeTabContent('branch-bound')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Función auxiliar para calcular factorial
+function factorial(n) {
+    if (n <= 1) return 1;
+    let result = 1;
+    for (let i = 2; i <= n; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+// Función para iniciar la simulación de Branch & Bound
+function iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal, nombresCentrosJson, centersMapJson) {
+    console.log('Iniciando simulación Branch & Bound', { tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal });
+    
+    try {
+        // Parsear los datos JSON
+        let nombresCentros = [];
+        let centersMap = {};
+        
+        if (nombresCentrosJson) {
+            try {
+                const jsonStr = typeof nombresCentrosJson === 'string' ? nombresCentrosJson.replace(/&quot;/g, '"') : JSON.stringify(nombresCentrosJson);
+                nombresCentros = JSON.parse(jsonStr);
+            } catch (e) {
+                console.warn('Error parseando nombresCentros:', e);
+                nombresCentros = Array.isArray(nombresCentrosJson) ? nombresCentrosJson : [];
+            }
+        }
+        
+        if (centersMapJson) {
+            try {
+                const jsonStr = typeof centersMapJson === 'string' ? centersMapJson.replace(/&quot;/g, '"') : JSON.stringify(centersMapJson);
+                centersMap = JSON.parse(jsonStr);
+            } catch (e) {
+                console.warn('Error parseando centersMap:', e);
+                centersMap = typeof centersMapJson === 'object' ? centersMapJson : {};
+            }
+        }
+        
+        const btn = document.getElementById(`btn-iniciar-simulacion-${tabsId}`);
+        const arbolContainer = document.getElementById(`sim-arbol-${tabsId}`);
+        const nodosExploradosEl = document.getElementById(`sim-nodos-explorados-${tabsId}`);
+        const nodosPodadosEl = document.getElementById(`sim-nodos-podados-${tabsId}`);
+        const mejorCostoEl = document.getElementById(`sim-mejor-costo-${tabsId}`);
+        
+        if (!btn) {
+            console.error('Botón no encontrado:', `btn-iniciar-simulacion-${tabsId}`);
+            alert('Error: No se encontró el botón de simulación');
+            return;
+        }
+        
+        if (!arbolContainer) {
+            console.error('Contenedor de árbol no encontrado:', `sim-arbol-${tabsId}`);
+            alert('Error: No se encontró el contenedor de simulación');
+            return;
+        }
+        
+        console.log('Elementos encontrados:', { btn: !!btn, arbolContainer: !!arbolContainer, nodosExploradosEl: !!nodosExploradosEl });
+    
+    // Deshabilitar botón
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulando...';
+    
+    // Limpiar contenedor
+    arbolContainer.innerHTML = '';
+    
+    // Limpiar historial
+    const historialContainer = document.getElementById(`sim-historial-${tabsId}`);
+    if (historialContainer) {
+        historialContainer.innerHTML = '';
+    }
+    
+    // Crear canvas para visualización
+    const canvas = document.createElement('canvas');
+    canvas.width = arbolContainer.offsetWidth || 800;
+    canvas.height = 400;
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    canvas.style.borderRadius = '8px';
+    arbolContainer.appendChild(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    const totalNodos = nodosExplorados + nodosPodados;
+    let nodosExploradosCount = 0;
+    let nodosPodadosCount = 0;
+    let mejorCosto = costoFinal * 1.5; // Empezar con un costo mayor que el final
+    
+    // Array para almacenar el historial de nodos
+    const historialNodos = [];
+    
+    // Configuración de colores
+    const colorExplorado = '#22c55e';
+    const colorPodado = '#ef4444';
+    const colorMejor = '#3b82f6';
+    const colorFondo = '#0f172a';
+    
+    // Configuración del árbol
+    const nivelMaximo = Math.min(numeroCentros, 5); // Limitar niveles para visualización
+    const anchoNodo = 80;
+    const altoNodo = 40;
+    const espacioHorizontal = 150;
+    const espacioVertical = 80;
+    
+    // Función para dibujar un nodo
+    function dibujarNodo(x, y, texto, color, esMejor = false) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x - anchoNodo/2, y - altoNodo/2, anchoNodo, altoNodo);
+        
+        if (esMejor) {
+            ctx.strokeStyle = colorMejor;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x - anchoNodo/2 - 2, y - altoNodo/2 - 2, anchoNodo + 4, altoNodo + 4);
+        }
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(texto, x, y);
+    }
+    
+    // Función para dibujar una línea
+    function dibujarLinea(x1, y1, x2, y2, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+    
+    // Función para obtener nombre del centro basado en el índice del nodo
+    function obtenerNombreCentro(nodoIndex) {
+        // Si tenemos la ruta óptima con nombres, usar esos nombres
+        if (nombresCentros.length > 0) {
+            // Para nodos explorados, usar nombres de la ruta óptima
+            // Para nodos podados, usar nombres alternativos de otros centros
+            const indiceEnRuta = (nodoIndex - 1) % nombresCentros.length;
+            const nombreBase = nombresCentros[indiceEnRuta] || `Centro ${nodoIndex}`;
+            
+            // Si el nodo está más allá de la ruta, agregar variación
+            if (nodoIndex > nombresCentros.length) {
+                const variacion = Math.floor((nodoIndex - 1) / nombresCentros.length);
+                if (variacion > 0) {
+                    // Para rutas alternativas, usar nombres de otros centros disponibles
+                    const todosLosNombres = Object.values(centersMap);
+                    if (todosLosNombres.length > nombresCentros.length) {
+                        const indiceAlternativo = (indiceEnRuta + variacion) % todosLosNombres.length;
+                        return todosLosNombres[indiceAlternativo] || nombreBase;
+                    }
+                }
+            }
+            return nombreBase;
+        }
+        
+        // Si no hay nombres de ruta, usar todos los centros disponibles
+        const todosLosNombres = Object.values(centersMap);
+        if (todosLosNombres.length > 0) {
+            const indiceCentro = (nodoIndex - 1) % todosLosNombres.length;
+            return todosLosNombres[indiceCentro] || `Centro ${nodoIndex}`;
+        }
+        
+        return `Centro ${nodoIndex}`;
+    }
+    
+    // Función para agregar nodo al historial
+    function agregarNodoAlHistorial(nodoNum, esExplorado, razon, costoEstimado) {
+        const nombreCentro = obtenerNombreCentro(nodoNum);
+        const nodoInfo = {
+            numero: nodoNum,
+            nombre: nombreCentro,
+            explorado: esExplorado,
+            razon: razon,
+            costo: costoEstimado,
+            timestamp: Date.now()
+        };
+        historialNodos.push(nodoInfo);
+        
+        if (historialContainer) {
+            const nodoHtml = `
+                <div style="background: ${esExplorado ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; 
+                            border-left: 4px solid ${esExplorado ? '#22c55e' : '#ef4444'}; 
+                            padding: 0.75rem; border-radius: 6px; 
+                            display: flex; align-items: center; gap: 0.75rem; 
+                            animation: slideIn 0.3s ease-out;">
+                    <div style="flex-shrink: 0; width: 32px; height: 32px; 
+                                background: ${esExplorado ? '#22c55e' : '#ef4444'}; 
+                                border-radius: 50%; 
+                                display: flex; align-items: center; justify-content: center; 
+                                color: white; font-weight: bold; font-size: 0.85rem;">
+                        ${nodoNum}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                            <i class="fas ${esExplorado ? 'fa-check-circle' : 'fa-times-circle'}" 
+                               style="color: ${esExplorado ? '#22c55e' : '#ef4444'};"></i>
+                            <strong style="color: var(--text-primary); font-size: 0.9rem;">
+                                ${nombreCentro}: ${esExplorado ? 'Explorado' : 'Podado'}
+                            </strong>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                            ${razon}
+                        </div>
+                        ${costoEstimado ? `
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                            <i class="fas fa-dollar-sign"></i> Costo estimado: $${costoEstimado}
+                        </div>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Agregar al inicio del historial
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = nodoHtml;
+            historialContainer.insertBefore(tempDiv.firstElementChild, historialContainer.firstChild);
+            
+            // Limitar a 50 nodos visibles
+            while (historialContainer.children.length > 50) {
+                historialContainer.removeChild(historialContainer.lastChild);
+            }
+            
+            // Scroll al inicio
+            historialContainer.scrollTop = 0;
+        }
+    }
+    
+    // Simulación animada
+    let frame = 0;
+    const velocidad = Math.max(1, Math.floor(totalNodos / 200)); // Ajustar velocidad según cantidad de nodos
+    let nodoActual = 0;
+    
+    const intervalId = setInterval(() => {
+        // Limpiar canvas
+        ctx.fillStyle = colorFondo;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Procesar nodos
+        if (frame % 2 === 0 && nodoActual < totalNodos) {
+            nodoActual++;
+            
+            // Determinar si el siguiente nodo es explorado o podado
+            // Alternar entre explorados y podados según la proporción
+            const porcentajeExplorados = nodosExplorados / totalNodos;
+            const esExplorado = (nodoActual <= nodosExplorados) || 
+                               (nodosExploradosCount < nodosExplorados && 
+                                nodosPodadosCount >= nodosPodados);
+            
+            if (esExplorado && nodosExploradosCount < nodosExplorados) {
+                nodosExploradosCount++;
+                // Actualizar mejor costo ocasionalmente (simulando que encuentra mejores rutas)
+                if (nodosExploradosCount % 5 === 0 && mejorCosto > costoFinal) {
+                    const reduccion = (mejorCosto - costoFinal) / Math.max(1, nodosExplorados / 5);
+                    mejorCosto = Math.max(costoFinal, mejorCosto - reduccion * (1 + Math.random() * 0.5));
+                }
+                
+                // Agregar al historial
+                const razonesExplorado = [
+                    'Ruta evaluada completamente',
+                    'Ruta factible encontrada',
+                    'Nueva mejor solución candidata',
+                    'Explorando todas las opciones',
+                    'Ruta válida dentro de restricciones',
+                    'Evaluando ruta prometedora',
+                    'Ruta completa verificada'
+                ];
+                const razon = razonesExplorado[Math.floor(Math.random() * razonesExplorado.length)];
+                const costoEstimado = Math.max(costoFinal, Math.floor(mejorCosto - Math.random() * 50));
+                agregarNodoAlHistorial(nodoActual, true, razon, costoEstimado);
+            } else if (!esExplorado && nodosPodadosCount < nodosPodados) {
+                nodosPodadosCount++;
+                
+                // Agregar al historial
+                const razonesPodado = [
+                    'Excede presupuesto máximo',
+                    'Excede distancia máxima',
+                    'Costo mayor que mejor solución',
+                    'Ruta no factible',
+                    'Poda por cota inferior',
+                    'Restricciones violadas',
+                    'Cota inferior supera mejor costo',
+                    'Ruta descartada por optimización'
+                ];
+                const razon = razonesPodado[Math.floor(Math.random() * razonesPodado.length)];
+                const costoEstimado = Math.floor(mejorCosto + Math.random() * 200 + 100);
+                agregarNodoAlHistorial(nodoActual, false, razon, costoEstimado);
+            }
+        }
+        
+        // Actualizar UI
+        nodosExploradosEl.textContent = nodosExploradosCount;
+        nodosPodadosEl.textContent = nodosPodadosCount;
+        mejorCostoEl.textContent = mejorCosto === Infinity ? '∞' : '$' + Math.floor(mejorCosto);
+        
+        // Dibujar árbol simplificado
+        const centroX = canvas.width / 2;
+        const inicioY = 50;
+        
+        // Nodo raíz
+        dibujarNodo(centroX, inicioY, 'Inicio', colorExplorado, false);
+        
+        // Dibujar niveles del árbol
+        for (let nivel = 1; nivel <= nivelMaximo; nivel++) {
+            const nodosEnNivel = Math.min(3, Math.pow(2, nivel - 1)); // Máximo 3 nodos por nivel para visualización
+            const y = inicioY + nivel * espacioVertical;
+            const espacioTotal = (nodosEnNivel - 1) * espacioHorizontal;
+            const inicioX = centroX - espacioTotal / 2;
+            
+            for (let i = 0; i < nodosEnNivel; i++) {
+                const x = inicioX + i * espacioHorizontal;
+                const nodoIndex = nivel * 3 + i;
+                const esExplorado = nodoIndex < nodosExploradosCount;
+                const esPodado = nodoIndex >= nodosExploradosCount && nodoIndex < nodosExploradosCount + nodosPodadosCount;
+                
+                if (esExplorado || esPodado) {
+                    // Dibujar línea desde el padre
+                    const padreX = centroX;
+                    const padreY = inicioY + (nivel - 1) * espacioVertical;
+                    dibujarLinea(padreX, padreY + altoNodo/2, x, y - altoNodo/2, esExplorado ? colorExplorado : colorPodado);
+                    
+                    // Dibujar nodo con nombre del centro
+                    let texto;
+                    if (nivel === nivelMaximo) {
+                        texto = nombresCentros.length > i ? nombresCentros[i].substring(0, 8) : `Fin ${i+1}`;
+                    } else {
+                        const nombreCentro = obtenerNombreCentro(nodoIndex);
+                        texto = nombreCentro.length > 8 ? nombreCentro.substring(0, 8) : nombreCentro;
+                    }
+                    dibujarNodo(x, y, texto, esExplorado ? colorExplorado : colorPodado, false);
+                }
+            }
+        }
+        
+        frame++;
+        
+        // Detener cuando termine
+        if (nodosExploradosCount >= nodosExplorados && nodosPodadosCount >= nodosPodados) {
+            clearInterval(intervalId);
+            mejorCostoEl.textContent = '$' + costoFinal;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-redo"></i> Reiniciar Simulación';
+            btn.onclick = () => {
+                iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal, nombresCentrosJson, centersMapJson);
+            };
+        }
+    }, 50); // Actualizar cada 50ms
+    } catch (error) {
+        console.error('Error en simulación Branch & Bound:', error);
+        alert('Error al iniciar la simulación: ' + error.message);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> Iniciar Simulación';
+        }
+    }
+}
+
+// ==================== FUNCIONES AUXILIARES PARA NUEVOS MÓDULOS ====================
+
+/**
+ * Renderiza items seleccionables (centros o rutas) en un contenedor
+ */
+function renderSelectableItems(containerId, items, type, modulePrefix) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`Contenedor ${containerId} no encontrado`);
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    if (!items || items.length === 0) {
+        container.innerHTML = '<div class="loading-placeholder">No hay datos disponibles</div>';
+        return;
+    }
+    
+    items.forEach(item => {
+        let card;
+        if (type === 'center') {
+            // Crear función de onClick que maneje la selección correctamente
+            const onClickHandler = (el) => {
+                toggleSelection(el, 'center');
+                // También actualizar el checkbox visual
+                const checkbox = el.querySelector('.center-checkbox i');
+                if (checkbox) {
+                    if (el.classList.contains('selected')) {
+                        checkbox.classList.remove('far', 'fa-circle');
+                        checkbox.classList.add('fas', 'fa-check-circle');
+                    } else {
+                        checkbox.classList.remove('fas', 'fa-check-circle');
+                        checkbox.classList.add('far', 'fa-circle');
+                    }
+                }
+            };
+            card = renderCenterCard(item, onClickHandler, false);
+        } else if (type === 'route') {
+            // Crear función de onClick que maneje la selección correctamente
+            const onClickHandler = (el) => {
+                toggleSelection(el, 'route');
+                // También actualizar el checkbox visual
+                const checkbox = el.querySelector('.route-checkbox i');
+                if (checkbox) {
+                    if (el.classList.contains('selected')) {
+                        checkbox.classList.remove('far', 'fa-circle');
+                        checkbox.classList.add('fas', 'fa-check-circle');
+                    } else {
+                        checkbox.classList.remove('fas', 'fa-check-circle');
+                        checkbox.classList.add('far', 'fa-circle');
+                    }
+                }
+            };
+            card = renderRouteCard(item, onClickHandler, false);
+        } else {
+            // Fallback genérico
+            const div = document.createElement('div');
+            div.className = 'selectable-item';
+            div.dataset.id = item.id || '';
+            div.textContent = item.name || item.id || 'Sin nombre';
+            div.onclick = () => toggleSelection(div, type);
+            card = div;
+        }
+        
+        // Agregar prefijo al dataset para identificar el módulo
+        if (card.dataset) {
+            card.dataset.module = modulePrefix;
+        }
+        
+        // Agregar evento de click en toda la card para seleccionar
+        card.addEventListener('click', function(e) {
+            // Si el click es en el checkbox o botón de expandir, no hacer nada (ya se maneja)
+            if (e.target.closest('.center-checkbox') || e.target.closest('.route-checkbox') || 
+                e.target.closest('.center-expand-btn') || e.target.closest('.route-expand-btn')) {
+                return;
+            }
+            // Si el click es en el header (para expandir), no seleccionar
+            if (e.target.closest('.center-card-header') || e.target.closest('.route-card-header')) {
+                return;
+            }
+            // En cualquier otro lugar, seleccionar/deseleccionar
+            toggleSelection(card, type);
+            // Actualizar checkbox visual
+            const checkbox = card.querySelector('.center-checkbox i, .route-checkbox i');
+            if (checkbox) {
+                if (card.classList.contains('selected')) {
+                    checkbox.classList.remove('far', 'fa-circle');
+                    checkbox.classList.add('fas', 'fa-check-circle');
+                } else {
+                    checkbox.classList.remove('fas', 'fa-check-circle');
+                    checkbox.classList.add('far', 'fa-circle');
+                }
+            }
+        });
+        
+        // Agregar evento de click en el checkbox específicamente
+        const checkbox = card.querySelector('.center-checkbox, .route-checkbox');
+        if (checkbox) {
+            checkbox.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleSelection(card, type);
+                const checkboxIcon = checkbox.querySelector('i');
+                if (checkboxIcon) {
+                    if (card.classList.contains('selected')) {
+                        checkboxIcon.classList.remove('far', 'fa-circle');
+                        checkboxIcon.classList.add('fas', 'fa-check-circle');
+                    } else {
+                        checkboxIcon.classList.remove('fas', 'fa-check-circle');
+                        checkboxIcon.classList.add('far', 'fa-circle');
+                    }
+                }
+            });
+        }
+        
+        container.appendChild(card);
+    });
+}
+
+/**
+ * Obtiene los IDs de los items seleccionados en un módulo específico
+ */
+// Función para seleccionar todos los items
+function seleccionarTodos(modulePrefix, type) {
+    let containerId;
+    if (type === 'center') {
+        if (modulePrefix === 'bfs') containerId = 'bfs-centers-container';
+        else if (modulePrefix === 'dfs') containerId = 'dfs-centers-container';
+        else if (modulePrefix === 'bfs-paths') containerId = 'bfs-paths-centers-container';
+        else if (modulePrefix === 'backtracking') containerId = 'backtracking-centers-container';
+        else if (modulePrefix === 'branch-bound') containerId = 'branch-bound-centers-container';
+        else containerId = null;
+    } else {
+        if (modulePrefix === 'bfs') containerId = 'bfs-routes-container';
+        else if (modulePrefix === 'dfs') containerId = 'dfs-routes-container';
+        else if (modulePrefix === 'bfs-paths') containerId = 'bfs-paths-routes-container';
+        else containerId = null;
+    }
+    
+    if (!containerId) return;
+    
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const items = container.querySelectorAll('.selectable-item');
+    items.forEach(item => {
+        if (!item.classList.contains('selected')) {
+            item.classList.add('selected');
+            const checkbox = item.querySelector('.item-checkbox i');
+            if (checkbox) {
+                checkbox.classList.remove('fa-square');
+                checkbox.classList.add('fa-check-square');
+            }
+        }
+    });
+}
+
+function getSelectedItems(modulePrefix, type) {
+    // Buscar en el contenedor específico del módulo
+    let containerId;
+    if (type === 'center') {
+        if (modulePrefix === 'bfs') containerId = 'bfs-centers-container';
+        else if (modulePrefix === 'dfs') containerId = 'dfs-centers-container';
+        else if (modulePrefix === 'bfs-paths') containerId = 'bfs-paths-centers-container';
+        else if (modulePrefix === 'backtracking') containerId = 'backtracking-centers-container';
+        else if (modulePrefix === 'branch-bound') containerId = 'branch-bound-centers-container';
+        else containerId = null;
+    } else {
+        if (modulePrefix === 'bfs') containerId = 'bfs-routes-container';
+        else if (modulePrefix === 'dfs') containerId = 'dfs-routes-container';
+        else if (modulePrefix === 'bfs-paths') containerId = 'bfs-paths-routes-container';
+        else containerId = null;
+    }
+    
+    const selected = [];
+    
+    if (containerId) {
+        const container = document.getElementById(containerId);
+        if (container) {
+            const items = container.querySelectorAll('.selectable-item.selected');
+            items.forEach(item => {
+                const id = item.dataset.id;
+                if (id) {
+                    selected.push(id);
+                }
+            });
+        }
+    } else {
+        // Fallback: buscar por selector
+        const selector = type === 'center' ? '.center-card' : '.route-card';
+        const items = document.querySelectorAll(`${selector}[data-module="${modulePrefix}"]`);
+        items.forEach(item => {
+            if (item.classList.contains('selected')) {
+                const id = item.dataset.id;
+                if (id) {
+                    selected.push(id);
+                }
+            }
+        });
+    }
+    
+    console.log(`getSelectedItems(${modulePrefix}, ${type}):`, selected);
+    return selected;
+}
+
+// ==================== MÓDULO 6: BFS/DFS ====================
+
+// Cargar centros y rutas para BFS
+async function cargarDatosBFS() {
+    const centersLoading = document.getElementById('bfs-centers-loading');
+    const routesLoading = document.getElementById('bfs-routes-loading');
+    const centersContainer = document.getElementById('bfs-centers-container');
+    const routesContainer = document.getElementById('bfs-routes-container');
+    
+    try {
+        centersLoading.style.display = 'block';
+        routesLoading.style.display = 'block';
+        if (centersContainer) centersContainer.style.display = 'none';
+        if (routesContainer) routesContainer.style.display = 'none';
+        
+        const [centersRes, routesRes] = await Promise.all([
+            fetch(`${API_BASE}/graphs/centers`),
+            fetch(`${API_BASE}/graphs/routes`)
+        ]);
+        
+        if (!centersRes.ok || !routesRes.ok) {
+            throw new Error(`Error HTTP: ${centersRes.status} / ${routesRes.status}`);
+        }
+        
+        const centers = await centersRes.json();
+        const routes = await routesRes.json();
+        
+        centersLoading.style.display = 'none';
+        routesLoading.style.display = 'none';
+        if (centersContainer) centersContainer.style.display = 'block';
+        if (routesContainer) routesContainer.style.display = 'block';
+        
+        renderSelectableItems('bfs-centers-container', centers, 'center', 'bfs');
+        renderSelectableItems('bfs-routes-container', routes, 'route', 'bfs');
+        
+        // Llenar select de origen
+        const sourceSelect = document.getElementById('bfs-source-select');
+        if (sourceSelect) {
+            sourceSelect.innerHTML = '<option value="">Selecciona un centro de origen</option>';
+            centers.forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.id;
+                option.textContent = `${center.name || center.id} (${center.id})`;
+                sourceSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        centersLoading.style.display = 'none';
+        routesLoading.style.display = 'none';
+        console.error('Error cargando datos BFS:', error);
+        alert(`Error al cargar datos desde Neo4j: ${error.message}`);
+    }
+}
+
+// Cargar datos para DFS
+async function cargarDatosDFS() {
+    const centersLoading = document.getElementById('dfs-centers-loading');
+    const routesLoading = document.getElementById('dfs-routes-loading');
+    const centersContainer = document.getElementById('dfs-centers-container');
+    const routesContainer = document.getElementById('dfs-routes-container');
+    
+    try {
+        centersLoading.style.display = 'block';
+        routesLoading.style.display = 'block';
+        if (centersContainer) centersContainer.style.display = 'none';
+        if (routesContainer) routesContainer.style.display = 'none';
+        
+        const [centersRes, routesRes] = await Promise.all([
+            fetch(`${API_BASE}/graphs/centers`),
+            fetch(`${API_BASE}/graphs/routes`)
+        ]);
+        
+        if (!centersRes.ok || !routesRes.ok) {
+            throw new Error(`Error HTTP: ${centersRes.status} / ${routesRes.status}`);
+        }
+        
+        const centers = await centersRes.json();
+        const routes = await routesRes.json();
+        
+        centersLoading.style.display = 'none';
+        routesLoading.style.display = 'none';
+        if (centersContainer) centersContainer.style.display = 'block';
+        if (routesContainer) routesContainer.style.display = 'block';
+        
+        renderSelectableItems('dfs-centers-container', centers, 'center', 'dfs');
+        renderSelectableItems('dfs-routes-container', routes, 'route', 'dfs');
+        
+        const sourceSelect = document.getElementById('dfs-source-select');
+        if (sourceSelect) {
+            sourceSelect.innerHTML = '<option value="">Selecciona un centro de origen</option>';
+            centers.forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.id;
+                option.textContent = `${center.name || center.id} (${center.id})`;
+                sourceSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        centersLoading.style.display = 'none';
+        routesLoading.style.display = 'none';
+        console.error('Error cargando datos DFS:', error);
+        alert(`Error al cargar datos desde Neo4j: ${error.message}`);
+    }
+}
+
+// Cargar datos para BFS All Paths
+async function cargarDatosBFSPaths() {
+    try {
+        const [centersRes, routesRes] = await Promise.all([
+            fetch(`${API_BASE}/graphs/centers`),
+            fetch(`${API_BASE}/graphs/routes`)
+        ]);
+        
+        if (!centersRes.ok || !routesRes.ok) {
+            throw new Error(`Error HTTP: ${centersRes.status} / ${routesRes.status}`);
+        }
+        
+        const centers = await centersRes.json();
+        const routes = await routesRes.json();
+        
+        renderSelectableItems('bfs-paths-centers-container', centers, 'center', 'bfs-paths');
+        renderSelectableItems('bfs-paths-routes-container', routes, 'route', 'bfs-paths');
+        
+        const sourceSelect = document.getElementById('bfs-paths-source-select');
+        const destSelect = document.getElementById('bfs-paths-dest-select');
+        
+        if (sourceSelect) {
+            sourceSelect.innerHTML = '<option value="">Selecciona origen</option>';
+            centers.forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.id;
+                option.textContent = `${center.name || center.id} (${center.id})`;
+                sourceSelect.appendChild(option);
+            });
+        }
+        
+        if (destSelect) {
+            destSelect.innerHTML = '<option value="">Selecciona destino</option>';
+            centers.forEach(center => {
+                const option = document.createElement('option');
+                option.value = center.id;
+                option.textContent = `${center.name || center.id} (${center.id})`;
+                destSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando datos BFS Paths:', error);
+        alert(`Error al cargar datos desde Neo4j: ${error.message}`);
+    }
+}
+
+// Calcular BFS
+async function calcularBFS() {
+    const selectedCenters = getSelectedItems('bfs', 'center');
+    const selectedRoutes = getSelectedItems('bfs', 'route');
+    const sourceSelect = document.getElementById('bfs-source-select');
+    const sourceCenterId = sourceSelect ? sourceSelect.value : null;
+    
+    if (selectedCenters.length === 0) {
+        alert('Por favor selecciona al menos un centro');
+        return;
+    }
+    
+    if (!sourceCenterId) {
+        alert('Por favor selecciona un centro de origen');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const response = await fetch(`${API_BASE}/graphs/bfs/explore/selected`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                selectedCenters,
+                selectedRoutes,
+                sourceCenterId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        hideLoading();
+        showResult('bfs-result', data);
+    } catch (error) {
+        hideLoading();
+        console.error('Error calculando BFS:', error);
+        const errorMessage = error.message || 'Error desconocido al calcular BFS';
+        alert(`Error al calcular BFS:\n${errorMessage}`);
+    }
+}
+
+// Calcular DFS
+async function calcularDFS() {
+    const selectedCenters = getSelectedItems('dfs', 'center');
+    const selectedRoutes = getSelectedItems('dfs', 'route');
+    const sourceSelect = document.getElementById('dfs-source-select');
+    const sourceCenterId = sourceSelect ? sourceSelect.value : null;
+    
+    if (selectedCenters.length === 0) {
+        alert('Por favor selecciona al menos un centro');
+        return;
+    }
+    
+    if (!sourceCenterId) {
+        alert('Por favor selecciona un centro de origen');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const response = await fetch(`${API_BASE}/graphs/dfs/explore/selected`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                selectedCenters,
+                selectedRoutes,
+                sourceCenterId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Error HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        hideLoading();
+        showResult('dfs-result', data);
+    } catch (error) {
+        hideLoading();
+        console.error('Error calculando DFS:', error);
+        const errorMessage = error.message || 'Error desconocido al calcular DFS';
+        alert(`Error al calcular DFS:\n${errorMessage}`);
+    }
+}
+
+// Calcular BFS All Paths
+async function calcularBFSPaths() {
+    const selectedCenters = getSelectedItems('bfs-paths', 'center');
+    const selectedRoutes = getSelectedItems('bfs-paths', 'route');
+    const sourceCenterId = document.getElementById('bfs-paths-source-select').value;
+    const destCenterId = document.getElementById('bfs-paths-dest-select').value;
+    
+    if (selectedCenters.length === 0) {
+        alert('Por favor selecciona al menos un centro');
+        return;
+    }
+    
+    if (!sourceCenterId || !destCenterId) {
+        alert('Por favor selecciona origen y destino');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const response = await fetch(`${API_BASE}/graphs/bfs/all-paths/selected`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                selectedCenters,
+                selectedRoutes,
+                sourceCenterId,
+                destCenterId
+            })
+        });
+        
+        const data = await response.json();
+        hideLoading();
+        showResult('bfs-paths-result', data);
+    } catch (error) {
+        hideLoading();
+        console.error('Error calculando BFS Paths:', error);
+        alert('Error al calcular todos los caminos');
+    }
+}
+
+// ==================== MÓDULO 7: BACKTRACKING ====================
+
+// Cargar centros para Backtracking
+async function cargarCentrosBacktracking() {
+    const loading = document.getElementById('backtracking-centers-loading');
+    const container = document.getElementById('backtracking-centers-container');
+    
+    try {
+        if (loading) loading.style.display = 'block';
+        if (container) container.style.display = 'none';
+        
+        const response = await fetch(`${API_BASE}/graphs/centers`);
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const centers = await response.json();
+        
+        if (loading) loading.style.display = 'none';
+        if (container) container.style.display = 'block';
+        
+        renderSelectableItems('backtracking-centers-container', centers, 'center', 'backtracking');
+    } catch (error) {
+        if (loading) loading.style.display = 'none';
+        console.error('Error cargando centros Backtracking:', error);
+        alert(`Error al cargar centros desde Neo4j: ${error.message}`);
+    }
+}
+
+// Calcular Backtracking
+async function calcularBacktracking() {
+    const selectedCenters = getSelectedItems('backtracking', 'center');
+    const presupuesto = parseInt(document.getElementById('backtracking-presupuesto').value) || 1000;
+    const distancia = parseInt(document.getElementById('backtracking-distancia').value) || 500;
+    
+    if (selectedCenters.length === 0) {
+        alert('Por favor selecciona al menos un centro');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const response = await fetch(`${API_BASE}/backtracking/mejor-secuencia`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                centerIds: selectedCenters,
+                presupuestoMaximo: presupuesto,
+                distanciaMaxima: distancia
+            })
+        });
+        
+        const data = await response.json();
+        hideLoading();
+        showResult('backtracking-result', data);
+    } catch (error) {
+        hideLoading();
+        console.error('Error calculando Backtracking:', error);
+        alert('Error al calcular Backtracking');
+    }
+}
+
+// ==================== MÓDULO 8: BRANCH & BOUND ====================
+
+// Cargar centros para Branch & Bound
+async function cargarCentrosBranchBound() {
+    const loading = document.getElementById('branch-bound-centers-loading');
+    const container = document.getElementById('branch-bound-centers-container');
+    
+    try {
+        if (loading) loading.style.display = 'block';
+        if (container) container.style.display = 'none';
+        
+        const response = await fetch(`${API_BASE}/graphs/centers`);
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const centers = await response.json();
+        
+        if (loading) loading.style.display = 'none';
+        if (container) container.style.display = 'block';
+        
+        renderSelectableItems('branch-bound-centers-container', centers, 'center', 'branch-bound');
+    } catch (error) {
+        if (loading) loading.style.display = 'none';
+        console.error('Error cargando centros Branch & Bound:', error);
+        alert(`Error al cargar centros desde Neo4j: ${error.message}`);
+    }
+}
+
+// Calcular Branch & Bound
+async function calcularBranchBound() {
+    const selectedCenters = getSelectedItems('branch-bound', 'center');
+    const presupuesto = parseInt(document.getElementById('branch-bound-presupuesto').value) || 2000;
+    const distancia = parseInt(document.getElementById('branch-bound-distancia').value) || 1000;
+    const debeRegresar = document.getElementById('branch-bound-regresar').checked;
+    
+    if (selectedCenters.length === 0) {
+        alert('Por favor selecciona al menos un centro');
+        return;
+    }
+    
+    showLoading();
+    try {
+        // Obtener información de los centros para tener los nombres
+        const centersResponse = await fetch(`${API_BASE}/graphs/centers`);
+        let centersMap = {};
+        if (centersResponse.ok) {
+            const centers = await centersResponse.json();
+            centers.forEach(center => {
+                centersMap[center.id] = center.name || center.id;
+            });
+        }
+        
+        const response = await fetch(`${API_BASE}/branch-bound/ruta-optima`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                centerIds: selectedCenters,
+                presupuestoMaximo: presupuesto,
+                distanciaMaxima: distancia,
+                debeRegresarOrigen: debeRegresar
+            })
+        });
+        
+        const data = await response.json();
+        // Agregar el mapa de nombres de centros a los datos
+        data.centersMap = centersMap;
+        hideLoading();
+        showResult('branch-bound-result', data);
+    } catch (error) {
+        hideLoading();
+        console.error('Error calculando Branch & Bound:', error);
+        alert('Error al calcular Branch & Bound');
+    }
+}
+
+// Inicializar módulos cuando se cargan
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar datos cuando se muestra el módulo BFS/DFS
+    const bfsDfsTab = document.querySelector('[data-module="bfs-dfs"]');
+    if (bfsDfsTab) {
+        bfsDfsTab.addEventListener('click', function() {
+            setTimeout(() => {
+                cargarDatosBFS();
+                cargarDatosDFS();
+                cargarDatosBFSPaths();
+            }, 100);
+        });
+    }
+    
+    // Cargar datos cuando se muestra el módulo Backtracking
+    const backtrackingTab = document.querySelector('[data-module="backtracking"]');
+    if (backtrackingTab) {
+        backtrackingTab.addEventListener('click', function() {
+            setTimeout(() => {
+                cargarCentrosBacktracking();
+            }, 100);
+        });
+    }
+    
+    // Cargar datos cuando se muestra el módulo Branch & Bound
+    const branchBoundTab = document.querySelector('[data-module="branch-bound"]');
+    if (branchBoundTab) {
+        branchBoundTab.addEventListener('click', function() {
+            setTimeout(() => {
+                cargarCentrosBranchBound();
+            }, 100);
+        });
+    }
 });
 

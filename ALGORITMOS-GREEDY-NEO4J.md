@@ -322,7 +322,48 @@ http://localhost:7474
 
 # Cargar datos si es necesario
 neo4j-cypher-shell < neo4j-cargar-datos-masivo.cypher
+
+# IMPORTANTE: Crear índices para optimizar rendimiento
+neo4j-cypher-shell < neo4j-optimize-indexes.cypher
 ```
+
+## ⚡ Optimizaciones de Rendimiento
+
+### Problemas Identificados y Solucionados
+
+1. **Problema N+1**: 
+   - **Antes**: En `distribuirCombustiblePersonalizado()` se hacían múltiples `findById()` en un loop
+   - **Solución**: Se agregó `findAllByIds()` que obtiene todos los camiones en una sola consulta
+
+2. **Consultas Ineficientes**:
+   - **Antes**: Se usaba `findAll()` y luego se filtraba en memoria con Java streams
+   - **Solución**: Se agregaron consultas específicas con filtros en Neo4j:
+     - `findActiveTrucks()`: Obtiene camiones AVAILABLE o IN_TRANSIT directamente
+     - `findByStatus()`: Filtra por status en Neo4j
+
+3. **Falta de Índices**:
+   - **Solución**: Script `neo4j-optimize-indexes.cypher` crea índices en:
+     - `Truck.status` y `Truck.id`
+     - `DistributionCenter.status`, `priority`, `demandLevel`
+     - `Route.id`, `cost`, `distance`
+
+### Mejoras de Rendimiento Esperadas
+
+- **Reducción de consultas**: De N consultas a 1 consulta (problema N+1)
+- **Filtrado en base de datos**: Neo4j filtra antes de enviar datos a Java
+- **Índices**: Consultas 10-100x más rápidas con índices apropiados
+- **Menor transferencia de datos**: Solo se traen los datos necesarios
+
+### Cómo Aplicar las Optimizaciones
+
+1. Ejecutar el script de índices en Neo4j:
+```bash
+neo4j-cypher-shell < neo4j-optimize-indexes.cypher
+```
+
+2. Reiniciar la aplicación Spring Boot para que use los nuevos métodos optimizados
+
+3. Verificar que las consultas sean más rápidas monitoreando los logs
 
 ## 📝 Ejemplo Completo de Uso
 

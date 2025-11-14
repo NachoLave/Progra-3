@@ -373,5 +373,170 @@ public class GraphController {
         
         return ResponseEntity.ok(response);
     }
+    
+    /**
+     * Endpoint para BFS (Breadth-First Search) con centros y rutas seleccionados
+     * Complejidad: O(V + E)
+     */
+    @PostMapping("/bfs/explore/selected")
+    @Operation(summary = "Explora la red usando BFS con selección de Neo4j",
+                description = "Complejidad: O(V + E). Encuentra todos los centros alcanzables desde un origen.")
+    public ResponseEntity<Map<String, Object>> bfsExploreSelected(
+            @Parameter(description = "Request con centros, rutas y origen seleccionados", required = true)
+            @RequestBody Map<String, Object> request) {
+        
+        long startTime = System.nanoTime();
+        
+        @SuppressWarnings("unchecked")
+        List<String> selectedCenters = (List<String>) request.get("selectedCenters");
+        @SuppressWarnings("unchecked")
+        List<String> selectedRoutes = (List<String>) request.get("selectedRoutes");
+        String sourceCenterId = (String) request.get("sourceCenterId");
+        
+        if (selectedCenters == null || selectedCenters.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Debe seleccionar al menos un centro");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        if (sourceCenterId == null || sourceCenterId.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Debe seleccionar un centro de origen");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        int source = graphService.obtenerIndiceCentroOrigen(selectedCenters, sourceCenterId);
+        if (source < 0) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "El centro de origen debe estar en la lista de centros seleccionados");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        Map<Integer, List<int[]>> adjacencyList = graphService.construirListaAdyacenciaConSeleccion(selectedCenters, selectedRoutes);
+        int vertices = selectedCenters.size();
+        
+        Map<String, Object> bfsResult = graphService.bfs(vertices, source, adjacencyList);
+        long endTime = System.nanoTime();
+        
+        Map<String, Object> response = new HashMap<>(bfsResult);
+        response.put("algoritmo", "BFS (Breadth-First Search)");
+        response.put("complejidad", "O(V + E)");
+        response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+        response.put("source", source);
+        response.put("sourceCenterId", sourceCenterId);
+        response.put("fuente", "neo4j-selected");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Endpoint para DFS (Depth-First Search) con centros y rutas seleccionados
+     * Complejidad: O(V + E)
+     */
+    @PostMapping("/dfs/explore/selected")
+    @Operation(summary = "Explora la red usando DFS con selección de Neo4j",
+                description = "Complejidad: O(V + E). Encuentra todos los caminos posibles desde un origen.")
+    public ResponseEntity<Map<String, Object>> dfsExploreSelected(
+            @Parameter(description = "Request con centros, rutas y origen seleccionados", required = true)
+            @RequestBody Map<String, Object> request) {
+        
+        long startTime = System.nanoTime();
+        
+        @SuppressWarnings("unchecked")
+        List<String> selectedCenters = (List<String>) request.get("selectedCenters");
+        @SuppressWarnings("unchecked")
+        List<String> selectedRoutes = (List<String>) request.get("selectedRoutes");
+        String sourceCenterId = (String) request.get("sourceCenterId");
+        
+        if (selectedCenters == null || selectedCenters.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Debe seleccionar al menos un centro");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        if (sourceCenterId == null || sourceCenterId.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Debe seleccionar un centro de origen");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        int source = graphService.obtenerIndiceCentroOrigen(selectedCenters, sourceCenterId);
+        if (source < 0) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "El centro de origen debe estar en la lista de centros seleccionados");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        Map<Integer, List<int[]>> adjacencyList = graphService.construirListaAdyacenciaConSeleccion(selectedCenters, selectedRoutes);
+        int vertices = selectedCenters.size();
+        
+        Map<String, Object> dfsResult = graphService.dfs(vertices, source, adjacencyList);
+        long endTime = System.nanoTime();
+        
+        Map<String, Object> response = new HashMap<>(dfsResult);
+        response.put("algoritmo", "DFS (Depth-First Search)");
+        response.put("complejidad", "O(V + E)");
+        response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+        response.put("source", source);
+        response.put("sourceCenterId", sourceCenterId);
+        response.put("fuente", "neo4j-selected");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Endpoint para encontrar todos los caminos entre dos centros usando BFS
+     */
+    @PostMapping("/bfs/all-paths/selected")
+    @Operation(summary = "Encuentra todos los caminos entre dos centros usando BFS",
+                description = "Encuentra todas las rutas alternativas entre origen y destino.")
+    public ResponseEntity<Map<String, Object>> bfsFindAllPathsSelected(
+            @Parameter(description = "Request con centros, rutas, origen y destino", required = true)
+            @RequestBody Map<String, Object> request) {
+        
+        long startTime = System.nanoTime();
+        
+        @SuppressWarnings("unchecked")
+        List<String> selectedCenters = (List<String>) request.get("selectedCenters");
+        @SuppressWarnings("unchecked")
+        List<String> selectedRoutes = (List<String>) request.get("selectedRoutes");
+        String sourceCenterId = (String) request.get("sourceCenterId");
+        String destCenterId = (String) request.get("destCenterId");
+        
+        if (selectedCenters == null || selectedCenters.isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Debe seleccionar al menos un centro");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        int source = graphService.obtenerIndiceCentroOrigen(selectedCenters, sourceCenterId);
+        int dest = graphService.obtenerIndiceCentroOrigen(selectedCenters, destCenterId);
+        
+        if (source < 0 || dest < 0) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Origen y destino deben estar en la lista de centros seleccionados");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        Map<Integer, List<int[]>> adjacencyList = graphService.construirListaAdyacenciaConSeleccion(selectedCenters, selectedRoutes);
+        int vertices = selectedCenters.size();
+        
+        List<List<Integer>> allPaths = graphService.bfsFindAllPaths(vertices, source, dest, adjacencyList);
+        long endTime = System.nanoTime();
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("allPaths", allPaths);
+        response.put("totalPaths", allPaths.size());
+        response.put("source", source);
+        response.put("destination", dest);
+        response.put("sourceCenterId", sourceCenterId);
+        response.put("destCenterId", destCenterId);
+        response.put("algoritmo", "BFS - Todos los Caminos");
+        response.put("complejidad", "O(V + E)");
+        response.put("tiempoEjecucionNanosegundos", endTime - startTime);
+        response.put("fuente", "neo4j-selected");
+        
+        return ResponseEntity.ok(response);
+    }
 }
 
