@@ -7076,7 +7076,17 @@ function formatBranchBoundResultModal(data) {
                                 <h4 style="margin: 0; color: var(--text-primary);">
                                     <i class="fas fa-sitemap"></i> Exploración del Árbol de Búsqueda
                                 </h4>
-                                <button id="btn-iniciar-simulacion-${tabsId}" class="btn btn-primary" onclick="iniciarSimulacionBranchBound('${tabsId}', ${data.nodosExplorados || 0}, ${data.nodosPodados || 0}, ${data.numeroCentros || rutaOptima.length}, ${data.costoTotal || 0}, '${JSON.stringify(nombresCentros).replace(/'/g, "\\'")}', '${JSON.stringify(centersMap).replace(/'/g, "\\'")}')" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                <button id="btn-iniciar-simulacion-${tabsId}" 
+                                        class="btn btn-primary" 
+                                        data-tabs-id="${tabsId}"
+                                        data-nodos-explorados="${data.nodosExplorados || 0}"
+                                        data-nodos-podados="${data.nodosPodados || 0}"
+                                        data-numero-centros="${data.numeroCentros || rutaOptima.length}"
+                                        data-costo-final="${data.costoTotal || 0}"
+                                        data-nombres-centros='${JSON.stringify(nombresCentros)}'
+                                        data-centers-map='${JSON.stringify(centersMap)}'
+                                        onclick="iniciarSimulacionBranchBoundDesdeBoton(this)" 
+                                        style="padding: 0.5rem 1rem; font-size: 0.9rem;">
                                     <i class="fas fa-play"></i> Iniciar Simulación
                                 </button>
                             </div>
@@ -7189,32 +7199,70 @@ function factorial(n) {
     return result;
 }
 
+// Función auxiliar para iniciar simulación desde el botón (usa data attributes)
+function iniciarSimulacionBranchBoundDesdeBoton(button) {
+    const tabsId = button.getAttribute('data-tabs-id');
+    const nodosExplorados = parseInt(button.getAttribute('data-nodos-explorados')) || 0;
+    const nodosPodados = parseInt(button.getAttribute('data-nodos-podados')) || 0;
+    const numeroCentros = parseInt(button.getAttribute('data-numero-centros')) || 0;
+    const costoFinal = parseInt(button.getAttribute('data-costo-final')) || 0;
+    
+    let nombresCentros = [];
+    let centersMap = {};
+    
+    try {
+        const nombresCentrosStr = button.getAttribute('data-nombres-centros');
+        if (nombresCentrosStr) {
+            nombresCentros = JSON.parse(nombresCentrosStr);
+        }
+    } catch (e) {
+        console.warn('Error parseando nombresCentros desde data attribute:', e);
+    }
+    
+    try {
+        const centersMapStr = button.getAttribute('data-centers-map');
+        if (centersMapStr) {
+            centersMap = JSON.parse(centersMapStr);
+        }
+    } catch (e) {
+        console.warn('Error parseando centersMap desde data attribute:', e);
+    }
+    
+    iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal, nombresCentros, centersMap);
+}
+
 // Función para iniciar la simulación de Branch & Bound
 function iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal, nombresCentrosJson, centersMapJson) {
     console.log('Iniciando simulación Branch & Bound', { tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal });
     
     try {
-        // Parsear los datos JSON
+        // Parsear los datos JSON - ahora pueden venir como objetos o strings
         let nombresCentros = [];
         let centersMap = {};
         
         if (nombresCentrosJson) {
-            try {
-                const jsonStr = typeof nombresCentrosJson === 'string' ? nombresCentrosJson.replace(/&quot;/g, '"') : JSON.stringify(nombresCentrosJson);
-                nombresCentros = JSON.parse(jsonStr);
-            } catch (e) {
-                console.warn('Error parseando nombresCentros:', e);
-                nombresCentros = Array.isArray(nombresCentrosJson) ? nombresCentrosJson : [];
+            if (Array.isArray(nombresCentrosJson)) {
+                nombresCentros = nombresCentrosJson;
+            } else if (typeof nombresCentrosJson === 'string') {
+                try {
+                    nombresCentros = JSON.parse(nombresCentrosJson.replace(/&quot;/g, '"'));
+                } catch (e) {
+                    console.warn('Error parseando nombresCentros:', e);
+                    nombresCentros = [];
+                }
             }
         }
         
         if (centersMapJson) {
-            try {
-                const jsonStr = typeof centersMapJson === 'string' ? centersMapJson.replace(/&quot;/g, '"') : JSON.stringify(centersMapJson);
-                centersMap = JSON.parse(jsonStr);
-            } catch (e) {
-                console.warn('Error parseando centersMap:', e);
-                centersMap = typeof centersMapJson === 'object' ? centersMapJson : {};
+            if (typeof centersMapJson === 'object' && !Array.isArray(centersMapJson)) {
+                centersMap = centersMapJson;
+            } else if (typeof centersMapJson === 'string') {
+                try {
+                    centersMap = JSON.parse(centersMapJson.replace(/&quot;/g, '"'));
+                } catch (e) {
+                    console.warn('Error parseando centersMap:', e);
+                    centersMap = {};
+                }
             }
         }
         
@@ -7520,7 +7568,7 @@ function iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, num
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-redo"></i> Reiniciar Simulación';
             btn.onclick = () => {
-                iniciarSimulacionBranchBound(tabsId, nodosExplorados, nodosPodados, numeroCentros, costoFinal, nombresCentrosJson, centersMapJson);
+                iniciarSimulacionBranchBoundDesdeBoton(btn);
             };
         }
     }, 50); // Actualizar cada 50ms
