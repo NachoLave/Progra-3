@@ -94,7 +94,22 @@ window.onclick = function(event) {
     if (event.target === modal) {
         cerrarModal();
     }
+    
+    const kruskalModal = document.getElementById('kruskal-modal');
+    if (event.target === kruskalModal) {
+        cerrarKruskalModal();
+    }
 }
+
+// Cerrar modal de Kruskal con ESC
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const kruskalModal = document.getElementById('kruskal-modal');
+        if (kruskalModal && kruskalModal.classList.contains('active')) {
+            cerrarKruskalModal();
+        }
+    }
+});
 
 // Formatear resultado de recursividad para modal - Paso a paso
 function formatRecursiveResultModal(data, elementId) {
@@ -1658,6 +1673,14 @@ async function distribuirPresupuesto() {
 let kruskalEdges = [];
 let dijkstraEdges = {};
 
+// Almacenar último resultado de Kruskal para el modal
+let ultimoResultadoKruskal = null;
+let ultimosDatosKruskal = {
+    edges: [],
+    vertices: 4,
+    mst: null
+};
+
 // Agregar ruta para Kruskal
 function agregarRutaKruskal() {
     const from = parseInt(document.getElementById('edge-from').value);
@@ -1796,6 +1819,16 @@ async function calcularKruskal() {
         const data = await response.json();
         showResult('kruskal-result', data, true);
         
+        // Guardar datos para el modal - priorizar edges del backend si están disponibles
+        ultimoResultadoKruskal = data;
+        ultimosDatosKruskal = {
+            edges: data.edges && data.edges.length > 0 ? data.edges : (kruskalEdges.length > 0 ? kruskalEdges : request.edges || []),
+            vertices: data.vertices || vertices,
+            mst: data.mst || []
+        };
+        
+        console.log('Datos guardados para modal Kruskal:', ultimosDatosKruskal);
+        
         // Mostrar visualización del grafo
         setTimeout(() => {
             verVisualizacionGrafo('kruskal');
@@ -1869,6 +1902,232 @@ function verVisualizacionGrafoDijkstra() {
     if (edges.length > 0) {
         visualizer.visualizeGraph(edges, 'dijkstra-viz');
     }
+}
+
+// Función para abrir modal de Kruskal con visualización completa
+async function abrirModalKruskal() {
+    console.log('abrirModalKruskal llamada');
+    
+    // Verificar que visualizer esté disponible
+    const viz = window.visualizer || visualizer;
+    if (!viz || typeof viz.visualizeKruskalInModal !== 'function') {
+        console.error('Visualizer no está disponible:', { windowVisualizer: window.visualizer, visualizer: visualizer });
+        alert('Error: El visualizador no está disponible. Por favor recarga la página.');
+        return;
+    }
+    
+    let edgesToUse = [];
+    let vertices = 4;
+    
+    // Prioridad 1: Usar datos del último cálculo guardado
+    if (ultimosDatosKruskal && ultimosDatosKruskal.edges && ultimosDatosKruskal.edges.length > 0) {
+        edgesToUse = ultimosDatosKruskal.edges;
+        vertices = ultimosDatosKruskal.vertices;
+        console.log('Usando datos del último cálculo de Kruskal');
+    }
+    // Prioridad 2: Usar datos agregados manualmente
+    else if (kruskalEdges && kruskalEdges.length > 0) {
+        edgesToUse = kruskalEdges;
+        const verticesInput = document.getElementById('kruskal-vertices');
+        vertices = verticesInput ? parseInt(verticesInput.value) || 4 : 4;
+        console.log('Usando datos agregados manualmente');
+    }
+    // Prioridad 3: Intentar calcular desde el backend si hay datos en Neo4j
+    else {
+        try {
+            showLoading();
+            const verticesInput = document.getElementById('kruskal-vertices');
+            vertices = verticesInput ? parseInt(verticesInput.value) || 4 : 4;
+            
+            // Intentar obtener datos del backend (puede usar Neo4j si no hay request)
+            const response = await fetch(`${API_BASE}/graphs/kruskal/mst`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vertices: vertices, edges: [] })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                // El backend ahora devuelve las aristas originales en data.edges
+                if (data.edges && data.edges.length > 0) {
+                    edgesToUse = data.edges;
+                    vertices = data.vertices || vertices;
+                    // Guardar los datos para futuras visualizaciones
+                    ultimosDatosKruskal = {
+                        edges: data.edges,
+                        vertices: data.vertices || vertices,
+                        mst: data.mst || []
+                    };
+                    console.log('Obtenidos datos del backend (Neo4j):', { edges: edgesToUse.length, vertices });
+                } else {
+                    console.log('Backend no devolvió aristas originales');
+                }
+            }
+            hideLoading();
+        } catch (error) {
+            console.error('Error al obtener datos del backend:', error);
+            hideLoading();
+        }
+        
+        // Si aún no hay datos, usar datos de ejemplo
+        if (edgesToUse.length === 0) {
+            edgesToUse = [
+                { from: 0, to: 1, weight: 10 },
+                { from: 1, to: 2, weight: 15 },
+                { from: 2, to: 3, weight: 4 },
+                { from: 0, to: 3, weight: 5 },
+                { from: 1, to: 3, weight: 8 }
+            ];
+            vertices = 4;
+            console.log('Usando datos de ejemplo para Kruskal');
+        }
+    }
+    
+    // Calcular el número máximo de vértices desde los edges
+    let maxVertex = 0;
+    if (edgesToUse.length > 0) {
+        maxVertex = Math.max(...edgesToUse.flatMap(e => [e.from, e.to])) + 1;
+    }
+    
+    // Usar el máximo entre el input y el calculado
+    const finalVertices = Math.max(vertices, maxVertex);
+    
+    if (!edgesToUse || edgesToUse.length === 0) {
+        alert('No hay datos para visualizar. Por favor:\n1. Agrega rutas manualmente, o\n2. Calcula el MST primero, o\n3. Asegúrate de tener datos en Neo4j');
+        return;
+    }
+    
+    console.log('Llamando a visualizeKruskalInModal con:', { edgesToUse, finalVertices });
+    
+    try {
+        viz.visualizeKruskalInModal(edgesToUse, finalVertices);
+        mostrarKruskalModal();
+    } catch (error) {
+        console.error('Error al visualizar Kruskal en modal:', error);
+        alert('Error al mostrar la visualización: ' + error.message + '\n\nRevisa la consola del navegador (F12) para más detalles.');
+    }
+}
+
+// Función para ver Kruskal paso a paso (mantener compatibilidad)
+function verKruskalPasoAPaso() {
+    // Llamar a la nueva función del modal
+    abrirModalKruskal();
+}
+
+// Funciones para abrir y cerrar modal de Kruskal
+function mostrarKruskalModal() {
+    const modal = document.getElementById('kruskal-modal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+    }
+}
+
+function cerrarKruskalModal() {
+    const modal = document.getElementById('kruskal-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // Restaurar scroll del body
+    }
+}
+
+// Función para ver Dijkstra paso a paso
+function verDijkstraPasoAPaso() {
+    console.log('verDijkstraPasoAPaso llamada');
+    
+    // Verificar que visualizer esté disponible
+    const viz = window.visualizer || visualizer;
+    if (!viz || typeof viz.visualizeDijkstraStepByStep !== 'function') {
+        console.error('Visualizer no está disponible:', { windowVisualizer: window.visualizer, visualizer: visualizer });
+        alert('Error: El visualizador no está disponible. Por favor recarga la página.');
+        return;
+    }
+    
+    const verticesInput = document.getElementById('dijkstra-vertices');
+    const sourceInput = document.getElementById('dijkstra-source');
+    const vertices = verticesInput ? parseInt(verticesInput.value) || 5 : 5;
+    const source = sourceInput ? parseInt(sourceInput.value) || 0 : 0;
+    const edges = [];
+    
+    // Intentar obtener edges de diferentes fuentes
+    if (dijkstraEdges && Object.keys(dijkstraEdges).length > 0) {
+        for (const [from, connections] of Object.entries(dijkstraEdges)) {
+            if (Array.isArray(connections)) {
+                connections.forEach(([to, weight]) => {
+                    edges.push({ from: parseInt(from), to, weight });
+                });
+            }
+        }
+    }
+    
+    // Si no hay edges, usar datos de ejemplo
+    if (edges.length === 0) {
+        edges.push(
+            { from: 0, to: 1, weight: 4 },
+            { from: 0, to: 2, weight: 1 },
+            { from: 1, to: 3, weight: 2 },
+            { from: 2, to: 1, weight: 2 },
+            { from: 2, to: 3, weight: 5 },
+            { from: 3, to: 4, weight: 3 }
+        );
+        console.log('Usando datos de ejemplo para Dijkstra');
+    }
+    
+    // Calcular el número máximo de vértices desde los edges
+    let maxVertex = 0;
+    if (edges.length > 0) {
+        maxVertex = Math.max(...edges.flatMap(e => [e.from, e.to])) + 1;
+    }
+    const finalVertices = Math.max(vertices, maxVertex);
+    
+    if (edges.length === 0) {
+        alert('No hay datos para visualizar. Por favor agrega conexiones o calcula Dijkstra primero.');
+        return;
+    }
+    
+    if (source < 0 || source >= finalVertices) {
+        alert(`El vértice origen debe estar entre 0 y ${finalVertices - 1}.`);
+        return;
+    }
+    
+    console.log('Llamando a visualizeDijkstraStepByStep con:', { edges, finalVertices, source });
+    
+    try {
+        viz.visualizeDijkstraStepByStep(edges, finalVertices, source, 'dijkstra-steps-viz');
+        
+        // Ocultar otras visualizaciones si están visibles
+        const dijkstraViz = document.getElementById('dijkstra-viz');
+        if (dijkstraViz) {
+            dijkstraViz.style.display = 'none';
+        }
+        
+        // Hacer scroll hacia la visualización
+        setTimeout(() => {
+            const stepsViz = document.getElementById('dijkstra-steps-viz');
+            if (stepsViz) {
+                stepsViz.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 300);
+    } catch (error) {
+        console.error('Error al visualizar Dijkstra paso a paso:', error);
+        alert('Error al mostrar la visualización paso a paso: ' + error.message + '\n\nRevisa la consola del navegador (F12) para más detalles.');
+    }
+}
+
+// Función global de respaldo para abrir pantalla completa
+function openGraphFullscreen() {
+    console.log('openGraphFullscreen llamada');
+    if (window.visualizer && typeof window.visualizer.openGraphFullscreen === 'function') {
+        console.log('Abriendo pantalla completa desde visualizer');
+        window.visualizer.openGraphFullscreen();
+    } else if (visualizer && typeof visualizer.openGraphFullscreen === 'function') {
+        console.log('Abriendo pantalla completa desde visualizer (sin window)');
+        visualizer.openGraphFullscreen();
+    } else {
+        console.error('Visualizer no está disponible', { visualizer: window.visualizer, type: typeof window.visualizer });
+        alert('Error: No se puede abrir la pantalla completa. Verifica la consola del navegador (F12) para más detalles.');
+    }
+    return false;
 }
 
 // ==================== MÓDULO 5: PROGRAMACIÓN DINÁMICA ====================

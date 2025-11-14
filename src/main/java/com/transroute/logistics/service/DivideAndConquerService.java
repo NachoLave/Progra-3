@@ -53,7 +53,10 @@ public class DivideAndConquerService {
      * @return Lista ordenada por demanda (mayor a menor)
      */
     public List<DistributionCenter> ordenarPorDemandaMergeSort(List<DistributionCenter> centers) {
-        if (centers == null || centers.size() <= 1) {
+        if (centers == null) {
+            return new ArrayList<>();
+        }
+        if (centers.size() <= 1) {
             return new ArrayList<>(centers);
         }
         

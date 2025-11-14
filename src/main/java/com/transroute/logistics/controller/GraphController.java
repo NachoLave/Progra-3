@@ -65,12 +65,22 @@ public class GraphController {
                         "weight", e.weight
                 ))
                 .collect(Collectors.toList()));
+        // Incluir aristas originales para visualización paso a paso
+        response.put("edges", edges.stream()
+                .map(e -> Map.of(
+                        "from", e.from,
+                        "to", e.to,
+                        "weight", e.weight
+                ))
+                .collect(Collectors.toList()));
         response.put("numeroAristas", mst.size());
+        response.put("numeroAristasOriginales", edges.size());
         response.put("costoTotal", costoTotal);
         response.put("algoritmo", "Kruskal");
         response.put("complejidad", "O(E log E)");
         response.put("tiempoEjecucionNanosegundos", endTime - startTime);
         response.put("fuente", fuente);
+        response.put("vertices", vertices);
         
         return ResponseEntity.ok(response);
     }
@@ -88,12 +98,20 @@ public class GraphController {
         
         long startTime = System.nanoTime();
         int vertices;
-        Map<Integer, List<int[]>> adjacencyList;
+        Map<Integer, List<Double[]>> adjacencyList;
         String fuente;
         
         if (request != null && request.getAdjacencyList() != null && !request.getAdjacencyList().isEmpty()) {
             vertices = request.getVertices();
-            adjacencyList = request.getAdjacencyList();
+            // Convertir int[] a Double[] para mantener precisión
+            adjacencyList = new HashMap<>();
+            for (Map.Entry<Integer, List<int[]>> entry : request.getAdjacencyList().entrySet()) {
+                List<Double[]> doubleList = new ArrayList<>();
+                for (int[] arr : entry.getValue()) {
+                    doubleList.add(new Double[]{(double) arr[0], (double) arr[1]});
+                }
+                adjacencyList.put(entry.getKey(), doubleList);
+            }
             fuente = "request";
         } else {
             vertices = graphService.obtenerNumeroVertices();
@@ -138,13 +156,21 @@ public class GraphController {
         long startTime = System.nanoTime();
         int vertices;
         int source;
-        Map<Integer, List<int[]>> adjacencyList;
+        Map<Integer, List<Double[]>> adjacencyList;
         String fuente;
         
         if (request != null && request.getAdjacencyList() != null && !request.getAdjacencyList().isEmpty()) {
             vertices = request.getVertices();
             source = request.getSource();
-            adjacencyList = request.getAdjacencyList();
+            // Convertir int[] a Double[] para mantener precisión
+            adjacencyList = new HashMap<>();
+            for (Map.Entry<Integer, List<int[]>> entry : request.getAdjacencyList().entrySet()) {
+                List<Double[]> doubleList = new ArrayList<>();
+                for (int[] arr : entry.getValue()) {
+                    doubleList.add(new Double[]{(double) arr[0], (double) arr[1]});
+                }
+                adjacencyList.put(entry.getKey(), doubleList);
+            }
             fuente = "request";
         } else {
             vertices = graphService.obtenerNumeroVertices();
@@ -190,14 +216,22 @@ public class GraphController {
         int vertices;
         int source;
         int destination;
-        Map<Integer, List<int[]>> adjacencyList;
+        Map<Integer, List<Double[]>> adjacencyList;
         String fuente;
         
         if (request != null && request.getAdjacencyList() != null && !request.getAdjacencyList().isEmpty()) {
             vertices = request.getVertices();
             source = request.getSource();
             destination = request.getDestination();
-            adjacencyList = request.getAdjacencyList();
+            // Convertir int[] a Double[] para mantener precisión
+            adjacencyList = new HashMap<>();
+            for (Map.Entry<Integer, List<int[]>> entry : request.getAdjacencyList().entrySet()) {
+                List<Double[]> doubleList = new ArrayList<>();
+                for (int[] arr : entry.getValue()) {
+                    doubleList.add(new Double[]{(double) arr[0], (double) arr[1]});
+                }
+                adjacencyList.put(entry.getKey(), doubleList);
+            }
             fuente = "request";
         } else {
             vertices = graphService.obtenerNumeroVertices();
@@ -219,8 +253,8 @@ public class GraphController {
                 int from = path.get(i);
                 int to = path.get(i + 1);
                 if (adjacencyList.containsKey(from)) {
-                    for (int[] neighbor : adjacencyList.get(from)) {
-                        if (neighbor[0] == to) {
+                    for (Double[] neighbor : adjacencyList.get(from)) {
+                        if (neighbor[0].intValue() == to) {
                             totalDistance += neighbor[1];
                             break;
                         }

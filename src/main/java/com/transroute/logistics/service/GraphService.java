@@ -67,12 +67,13 @@ public class GraphService {
     
     /**
      * Obtiene rutas desde Neo4j y construye lista de adyacencia para Prim/Dijkstra
+     * Usa List<Double[]> en lugar de int[] para preservar precisión decimal
      */
-    public Map<Integer, List<int[]>> obtenerRutasYConstruirListaAdyacencia() {
+    public Map<Integer, List<Double[]>> obtenerRutasYConstruirListaAdyacencia() {
         List<Route> routes = routeRepository.findAll();
         List<DistributionCenter> centers = distributionCenterRepository.findAll();
         
-        Map<Integer, List<int[]>> adjacencyList = new HashMap<>();
+        Map<Integer, List<Double[]>> adjacencyList = new HashMap<>();
         
         // Inicializar listas de adyacencia para cada centro
         for (int i = 0; i < centers.size(); i++) {
@@ -90,8 +91,8 @@ public class GraphService {
             
             double weight = route.getCost() != null ? route.getCost() : route.getDistance() != null ? route.getDistance() : 0.0;
             
-            adjacencyList.get(from).add(new int[]{to, (int) weight});
-            adjacencyList.get(to).add(new int[]{from, (int) weight}); // Grafo no dirigido
+            adjacencyList.get(from).add(new Double[]{(double) to, weight});
+            adjacencyList.get(to).add(new Double[]{(double) from, weight}); // Grafo no dirigido
         }
         
         return adjacencyList;
@@ -146,8 +147,10 @@ public class GraphService {
      * @return Lista de aristas que forman el MST
      */
     public List<Edge> kruskalMST(int vertices, List<Edge> edges) {
+        // Crear copia de las aristas para no modificar la lista original
+        List<Edge> sortedEdges = new ArrayList<>(edges);
         // Ordenar aristas por peso (ascendente)
-        edges.sort(Comparator.comparingDouble(e -> e.weight));
+        sortedEdges.sort(Comparator.comparingDouble(e -> e.weight));
         
         // Union-Find para detectar ciclos
         int[] parent = new int[vertices];
@@ -159,7 +162,7 @@ public class GraphService {
         
         List<Edge> mst = new ArrayList<>();
         
-        for (Edge edge : edges) {
+        for (Edge edge : sortedEdges) {
             int rootFrom = find(parent, edge.from);
             int rootTo = find(parent, edge.to);
             
@@ -186,19 +189,21 @@ public class GraphService {
      * @param adjacencyList Lista de adyacencia: vértice -> lista de (vecino, peso)
      * @return Lista de aristas que forman el MST
      */
-    public List<Edge> primMST(int vertices, Map<Integer, List<int[]>> adjacencyList) {
+    public List<Edge> primMST(int vertices, Map<Integer, List<Double[]>> adjacencyList) {
         List<Edge> mst = new ArrayList<>();
         boolean[] visited = new boolean[vertices];
-        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[1]));
+        
+        // Usar una clase auxiliar para mantener precisión con double
+        PriorityQueue<PrimNode> pq = new PriorityQueue<>(Comparator.comparingDouble(n -> n.weight));
         
         // Empezar desde el vértice 0
-        pq.offer(new int[]{0, 0, -1}); // {from, weight, to}
+        pq.offer(new PrimNode(0, 0.0, -1));
         
         while (!pq.isEmpty() && mst.size() < vertices - 1) {
-            int[] current = pq.poll();
-            int to = current[0];
-            double weight = current[1];
-            int from = current[2];
+            PrimNode current = pq.poll();
+            int to = current.to;
+            double weight = current.weight;
+            int from = current.from;
             
             if (visited[to]) {
                 continue;
@@ -212,15 +217,32 @@ public class GraphService {
             
             // Agregar vecinos a la cola
             if (adjacencyList.containsKey(to)) {
-                for (int[] neighbor : adjacencyList.get(to)) {
-                    if (!visited[neighbor[0]]) {
-                        pq.offer(new int[]{neighbor[0], neighbor[1], to});
+                for (Double[] neighbor : adjacencyList.get(to)) {
+                    int neighborId = neighbor[0].intValue();
+                    double neighborWeight = neighbor[1];
+                    if (!visited[neighborId]) {
+                        pq.offer(new PrimNode(neighborId, neighborWeight, to));
                     }
                 }
             }
         }
         
         return mst;
+    }
+    
+    /**
+     * Clase auxiliar para Prim que mantiene precisión con double
+     */
+    private static class PrimNode {
+        int to;
+        double weight;
+        int from;
+        
+        PrimNode(int to, double weight, int from) {
+            this.to = to;
+            this.weight = weight;
+            this.from = from;
+        }
     }
     
     /**
@@ -232,7 +254,7 @@ public class GraphService {
      * @param adjacencyList Lista de adyacencia: vértice -> lista de (vecino, peso)
      * @return Array de distancias desde el origen a cada vértice
      */
-    public double[] dijkstra(int vertices, int source, Map<Integer, List<int[]>> adjacencyList) {
+    public double[] dijkstra(int vertices, int source, Map<Integer, List<Double[]>> adjacencyList) {
         double[] distances = new double[vertices];
         Arrays.fill(distances, Double.MAX_VALUE);
         distances[source] = 0.0;
@@ -253,8 +275,8 @@ public class GraphService {
             
             // Relajar aristas vecinas
             if (adjacencyList.containsKey(u)) {
-                for (int[] neighbor : adjacencyList.get(u)) {
-                    int v = neighbor[0];
+                for (Double[] neighbor : adjacencyList.get(u)) {
+                    int v = neighbor[0].intValue();
                     double weight = neighbor[1];
                     
                     if (!visited[v] && distances[u] + weight < distances[v]) {
@@ -278,7 +300,7 @@ public class GraphService {
      * @return Lista de vértices que forman el camino más corto, o null si no hay camino
      */
     public List<Integer> dijkstraPath(int vertices, int source, int destination, 
-                                      Map<Integer, List<int[]>> adjacencyList) {
+                                      Map<Integer, List<Double[]>> adjacencyList) {
         double[] distances = new double[vertices];
         int[] previous = new int[vertices];
         Arrays.fill(distances, Double.MAX_VALUE);
@@ -305,8 +327,8 @@ public class GraphService {
             
             // Relajar aristas vecinas
             if (adjacencyList.containsKey(u)) {
-                for (int[] neighbor : adjacencyList.get(u)) {
-                    int v = neighbor[0];
+                for (Double[] neighbor : adjacencyList.get(u)) {
+                    int v = neighbor[0].intValue();
                     double weight = neighbor[1];
                     
                     if (!visited[v] && distances[u] + weight < distances[v]) {
